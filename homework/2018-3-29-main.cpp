@@ -135,19 +135,12 @@
 // 
 // int main()
 // {
-// 	typedef ratio<5, 30> FiveThirds;
-// 	cout << FiveThirds::num << "/" << FiveThirds::den << endl; // 自动化为最简式1/6
-// 
-// 	ratio<0> zero;
-// 	cout << zero.num << "/" << zero.den << endl;
-// 
-// 	ratio<4, -10> neg;
-// 	cout << neg.num << "/" << neg.den << endl;
-// 
-// 
+// 	cout << "/* ratio相关用法 */" << endl << endl;
 // 	// ratio_add
 // 	ratio<3, 5> threeOfFive;
 // 	ratio<2, 10> oneOfTen;
+// 
+// 	cout << "==========ratio四则运算==========" << endl;
 // 	cout << threeOfFive.num << "/" << threeOfFive.den << " + "
 // 		<< oneOfTen.num << "/" << oneOfTen.den << " = "
 // 		<< ratio_add<decltype(threeOfFive), decltype(oneOfTen)>::num 
@@ -170,6 +163,47 @@
 // 		<< oneOfTen.num << "/" << oneOfTen.den << " = "
 // 		<< ratio_divide<decltype(threeOfFive), decltype(oneOfTen)>::num
 // 		<< "/" << ratio_divide<decltype(threeOfFive), decltype(oneOfTen)>::den << endl;
+// 	cout << endl;
+// 
+// 
+// 	// 大小比较
+// 	cout << boolalpha;
+// 	cout << "==========ratio比较(==,!=,<,<=,>,>=)==========" << endl;
+// 
+// 	// ratio_less
+// 	cout << threeOfFive.num << "/" << threeOfFive.den << " < "
+// 		<< oneOfTen.num << "/" << oneOfTen.den << " ? ==> "
+// 		<< ratio_less<decltype(threeOfFive), decltype(oneOfTen)>::value << endl;
+// 
+// 	// ratio_greater
+// 	cout << threeOfFive.num << "/" << threeOfFive.den << " > "
+// 		<< oneOfTen.num << "/" << oneOfTen.den << " ? ==> "
+// 		<< ratio_greater<decltype(threeOfFive), decltype(oneOfTen)>::value << endl;
+// 
+// 	// ratio_equal
+// 	cout << threeOfFive.num << "/" << threeOfFive.den << " = "
+// 		<< oneOfTen.num << "/" << oneOfTen.den << " ? ==> "
+// 		<< ratio_equal<decltype(threeOfFive), decltype(oneOfTen)>::value << endl;
+// 	cout << endl;
+// 
+// 	// 预定义的ratio单位
+// 	cout << "==========预定义的ratio单位==========" << endl;
+// 	cout << atto::num << "/" << atto::den << endl;
+// 	cout << femto::num << "/" << femto::den << endl;
+// 	cout << pico::num << "/" << pico::den << endl;
+// 	cout << nano::num << "/" << nano::den << endl;
+// 	cout << micro::num << "/" << micro::den << endl;
+// 	cout << milli::num << "/" << milli::den << endl;
+// 	cout << centi::num << "/" << centi::den << endl;
+// 	cout << deci::num << "/" << deci::den << endl;
+// 	cout << deca::num << "/" << deca::den << endl;
+// 	cout << hecto::num << "/" << hecto::den << endl;
+// 	cout << kilo::num << "/" << kilo::den << endl;
+// 	cout << mega::num << "/" << mega::den << endl;
+// 	cout << giga::num << "/" << giga::den << endl;
+// 	cout << tera::num << "/" << tera::den << endl;
+// 	cout << peta::num << "/" << peta::den << endl;
+// 	cout << exa::num << "/" << exa::den << endl;
 // 	return 0;
 // }
 // 
