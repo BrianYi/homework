@@ -129,47 +129,47 @@
  *	可以大幅度降低运行时溢出的几率，因为任何ratio值总是会变为最简式(lowest term), 即4/10=>2/5
  *	ratio<intmax_t N, intmax_t D=1>, 分母默认1, intmax_t是signed的64bit类型(在cstdint文件中)
  */
-#include <ratio>
-#include <iostream>
-using namespace std;
-
-int main()
-{
-	typedef ratio<5, 30> FiveThirds;
-	cout << FiveThirds::num << "/" << FiveThirds::den << endl; // 自动化为最简式1/6
-
-	ratio<0> zero;
-	cout << zero.num << "/" << zero.den << endl;
-
-	ratio<4, -10> neg;
-	cout << neg.num << "/" << neg.den << endl;
-
-
-	// ratio_add
-	ratio<3, 5> threeOfFive;
-	ratio<2, 10> oneOfTen;
-	cout << threeOfFive.num << "/" << threeOfFive.den << " + "
-		<< oneOfTen.num << "/" << oneOfTen.den << " = "
-		<< ratio_add<decltype(threeOfFive), decltype(oneOfTen)>::num 
-		<< "/" << ratio_add<decltype(threeOfFive), decltype(oneOfTen)>::den <<endl;
-
-	// ratio_subtract
-	cout << threeOfFive.num << "/" << threeOfFive.den << " - "
-		<< oneOfTen.num << "/" << oneOfTen.den << " = "
-		<< ratio_subtract<decltype(threeOfFive), decltype(oneOfTen)>::num
-		<< "/" << ratio_subtract<decltype(threeOfFive), decltype(oneOfTen)>::den << endl;
-
-	// ratio_multiply
-	cout << threeOfFive.num << "/" << threeOfFive.den << " * "
-		<< oneOfTen.num << "/" << oneOfTen.den << " = "
-		<< ratio_multiply<decltype(threeOfFive), decltype(oneOfTen)>::num
-		<< "/" << ratio_multiply<decltype(threeOfFive), decltype(oneOfTen)>::den << endl;
-
-	// ratio_divide
-	cout << threeOfFive.num << "/" << threeOfFive.den << " / "
-		<< oneOfTen.num << "/" << oneOfTen.den << " = "
-		<< ratio_divide<decltype(threeOfFive), decltype(oneOfTen)>::num
-		<< "/" << ratio_divide<decltype(threeOfFive), decltype(oneOfTen)>::den << endl;
-	return 0;
-}
-
+// #include <ratio>
+// #include <iostream>
+// using namespace std;
+// 
+// int main()
+// {
+// 	typedef ratio<5, 30> FiveThirds;
+// 	cout << FiveThirds::num << "/" << FiveThirds::den << endl; // 自动化为最简式1/6
+// 
+// 	ratio<0> zero;
+// 	cout << zero.num << "/" << zero.den << endl;
+// 
+// 	ratio<4, -10> neg;
+// 	cout << neg.num << "/" << neg.den << endl;
+// 
+// 
+// 	// ratio_add
+// 	ratio<3, 5> threeOfFive;
+// 	ratio<2, 10> oneOfTen;
+// 	cout << threeOfFive.num << "/" << threeOfFive.den << " + "
+// 		<< oneOfTen.num << "/" << oneOfTen.den << " = "
+// 		<< ratio_add<decltype(threeOfFive), decltype(oneOfTen)>::num 
+// 		<< "/" << ratio_add<decltype(threeOfFive), decltype(oneOfTen)>::den <<endl;
+// 
+// 	// ratio_subtract
+// 	cout << threeOfFive.num << "/" << threeOfFive.den << " - "
+// 		<< oneOfTen.num << "/" << oneOfTen.den << " = "
+// 		<< ratio_subtract<decltype(threeOfFive), decltype(oneOfTen)>::num
+// 		<< "/" << ratio_subtract<decltype(threeOfFive), decltype(oneOfTen)>::den << endl;
+// 
+// 	// ratio_multiply
+// 	cout << threeOfFive.num << "/" << threeOfFive.den << " * "
+// 		<< oneOfTen.num << "/" << oneOfTen.den << " = "
+// 		<< ratio_multiply<decltype(threeOfFive), decltype(oneOfTen)>::num
+// 		<< "/" << ratio_multiply<decltype(threeOfFive), decltype(oneOfTen)>::den << endl;
+// 
+// 	// ratio_divide
+// 	cout << threeOfFive.num << "/" << threeOfFive.den << " / "
+// 		<< oneOfTen.num << "/" << oneOfTen.den << " = "
+// 		<< ratio_divide<decltype(threeOfFive), decltype(oneOfTen)>::num
+// 		<< "/" << ratio_divide<decltype(threeOfFive), decltype(oneOfTen)>::den << endl;
+// 	return 0;
+// }
+// 
