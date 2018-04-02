@@ -56,68 +56,98 @@
  *  unordered_multiset: 内部采用哈希表
  */
 
+// #include <iostream>
+// #include <set>
+// #include <unordered_set>
+// #include <functional>
+// using namespace std;
+// 
+// int main()
+// {
+// 	/*
+// 	 *	set
+// 	 */
+// 	cout << "==========set==========" << endl;
+// 	// 无序set
+// 	cout << "序列：3,5,1,4,6" << endl;
+// 	unordered_set<int> unorderedSet{ 3,5,1,4,6 };
+// 	cout << "unordered_set<int>: ";
+// 	for (const auto& elem : unorderedSet)
+// 		cout << elem << " ";
+// 	cout << endl;
+// 
+// 	// 默认单调递增
+// 	set<int> orderedIncrSet(unorderedSet.begin(), unorderedSet.end());
+// 	cout << "set<int>: ";
+// 	for (const auto& elem : orderedIncrSet)
+// 		cout << elem << " ";
+// 	cout << endl;
+// 
+// 	// 加入greater(key compare function), 单调递减
+// 	set<int, greater<int>> orderedDecrSet(unorderedSet.begin(), unorderedSet.end());
+// 	cout << "set<int, greater<int>>: ";
+// 	for (const auto& elem : orderedDecrSet)
+// 		cout << elem << " ";
+// 	cout << endl << endl;
+// 	
+// 
+// 	/*
+// 	 *	multiset
+// 	 */
+// 
+// 	cout << "==========multiset==========" << endl;
+// 	// 无序multiset
+// 	cout << "序列：1,1,3,5,3,2,2,5" << endl;
+// 	unordered_multiset<int> unorderedMultiSet{ 1,1,3,5,3,2,2,5 };
+// 	cout << "unordered_multiset<int>: ";
+// 	for (const auto& elem : unorderedMultiSet)
+// 		cout << elem << " ";
+// 	cout << endl;
+// 
+// 	// 有序multiset, 默认单调递增
+// 	multiset<int> orderedIncrMultiSet(unorderedMultiSet.begin(), unorderedMultiSet.end());
+// 	cout << "multiset<int>: ";
+// 	for (const auto& elem : orderedIncrMultiSet)
+// 		cout << elem << " ";
+// 	cout << endl;
+// 
+// 	// 加入greater(key compare function), 单调递减
+// 	multiset<int, greater<int>> orderedDecrMultiSet(unorderedMultiSet.begin(), unorderedMultiSet.end());
+// 	cout << "multiset<int, greater<int>>: ";
+// 	for (const auto& elem : orderedDecrMultiSet)
+// 		cout << elem << " ";
+// 	cout << endl;
+// 	
+// 
+// 	return 0;
+// }
+
+/*
+ *	五类迭代器：
+ *	1. forward iterator
+	(forward_list, unordered的set,multiset,map,multimap都属此类型)
+ *	2. bidirectional iterator
+	(list,ordered的set,multiset,map,multimap都属此类型)
+ *	3. random-access iterator
+	(vector,deque,array,string都属此类型)
+ *	4. input iterator
+	(input stream属此类型)
+ *	5. output iterator
+	(inserter, output stream属此类型)
+ */
+
 #include <iostream>
-#include <set>
-#include <unordered_set>
-#include <functional>
+#include <iterator>
+#include <string>
+#include <vector>
+#include <algorithm>
 using namespace std;
 
 int main()
 {
-	/*
-	 *	set
-	 */
-	cout << "==========set==========" << endl;
-	// 无序set
-	cout << "序列：3,5,1,4,6" << endl;
-	unordered_set<int> unorderedSet{ 3,5,1,4,6 };
-	cout << "unordered_set<int>: ";
-	for (const auto& elem : unorderedSet)
-		cout << elem << " ";
-	cout << endl;
-
-	// 默认单调递增
-	set<int> orderedIncrSet(unorderedSet.begin(), unorderedSet.end());
-	cout << "set<int>: ";
-	for (const auto& elem : orderedIncrSet)
-		cout << elem << " ";
-	cout << endl;
-
-	// 加入greater(key compare function), 单调递减
-	set<int, greater<int>> orderedDecrSet(unorderedSet.begin(), unorderedSet.end());
-	cout << "set<int, greater<int>>: ";
-	for (const auto& elem : orderedDecrSet)
-		cout << elem << " ";
-	cout << endl << endl;
-	
-
-	/*
-	 *	multiset
-	 */
-
-	cout << "==========multiset==========" << endl;
-	// 无序multiset
-	cout << "序列：1,1,3,5,3,2,2,5" << endl;
-	unordered_multiset<int> unorderedMultiSet{ 1,1,3,5,3,2,2,5 };
-	cout << "unordered_multiset<int>: ";
-	for (const auto& elem : unorderedMultiSet)
-		cout << elem << " ";
-	cout << endl;
-
-	// 有序multiset, 默认单调递增
-	multiset<int> orderedIncrMultiSet(unorderedMultiSet.begin(), unorderedMultiSet.end());
-	cout << "multiset<int>: ";
-	for (const auto& elem : orderedIncrMultiSet)
-		cout << elem << " ";
-	cout << endl;
-
-	// 加入greater(key compare function), 单调递减
-	multiset<int, greater<int>> orderedDecrMultiSet(unorderedMultiSet.begin(), unorderedMultiSet.end());
-	cout << "multiset<int, greater<int>>: ";
-	for (const auto& elem : orderedDecrMultiSet)
-		cout << elem << " ";
-	cout << endl;
-	
-
+	vector<string> coll;
+	copy(istream_iterator<string>(cin), istream_iterator<string>(), back_inserter(coll));
+	sort(coll.begin(), coll.end());
+	unique_copy(coll.cbegin(), coll.cend(), ostream_iterator<string>(cout, "\n"));
 	return 0;
 }
