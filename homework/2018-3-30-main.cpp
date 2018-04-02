@@ -198,4 +198,46 @@
 
 /*
  *	mktime, from_time_t
+ *	struct tm 保存有calendar日期
+ *	mktime将calendar 日期转为从epoch开始的time_t object,
  */
+// #include <iostream>
+// #include <chrono>
+// #include <ctime>
+// #include <string>
+// using namespace std;
+// using namespace chrono;
+// 
+// string asString(const system_clock::time_point& tp)
+// {
+// 	time_t t = system_clock::to_time_t(tp);
+// 	string ts = ctime(&t);
+// 	ts.resize(ts.size() - 1);
+// 	return ts;
+// }
+// 
+// inline system_clock::time_point makeTimePoint(int year, int month, int day, int hour, int min, int sec = 0)
+// {
+// 	struct tm t;
+// 	t.tm_year = year - 1900;
+// 	t.tm_mon = month - 1;
+// 	t.tm_mday = day;
+// 	t.tm_hour = hour;
+// 	t.tm_min = min;
+// 	t.tm_sec = sec;
+// 	t.tm_isdst = -1;
+// 	time_t tt = mktime(&t);
+// 	if (tt == -1)
+// 		throw "no valid system time";
+// 	return system_clock::from_time_t(tt);
+// }
+// 
+// int main()
+// {
+// 	auto tp1 = makeTimePoint(2010, 01, 01, 00, 00);
+// 	cout << asString(tp1) << endl;
+// 
+// 	auto tp2 = makeTimePoint(2011, 05, 23, 13, 44);
+// 	cout << asString(tp2) << endl;
+// 	return 0;
+// }
