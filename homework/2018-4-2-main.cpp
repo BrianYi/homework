@@ -136,18 +136,23 @@
 	(inserter, output stream Ù¥À¿‡–Õ)
  */
 
-#include <iostream>
-#include <iterator>
-#include <string>
-#include <vector>
-#include <algorithm>
-using namespace std;
-
-int main()
-{
-	vector<string> coll;
-	copy(istream_iterator<string>(cin), istream_iterator<string>(), back_inserter(coll));
-	sort(coll.begin(), coll.end());
-	unique_copy(coll.cbegin(), coll.cend(), ostream_iterator<string>(cout, "\n"));
-	return 0;
-}
+// #include <iostream>
+// #include <iterator>
+// #include <string>
+// #include <vector>
+// #include <algorithm>
+// #include <numeric>
+// #include <sstream>
+// using namespace std;
+// 
+// int main()
+// {
+// 	vector<string> coll;
+// 	copy(istream_iterator<string>(cin), istream_iterator<string>(), back_inserter(coll));
+// 	sort(coll.begin(), coll.end());
+// 	unique_copy(coll.cbegin(), coll.cend(), ostream_iterator<string>(cout, " "));
+// 
+// 	istringstream str("0.1 0.2 0.3 0.4");
+// 	partial_sum(istream_iterator<double>(str), istream_iterator<double>(), ostream_iterator<double>(cout, " "));
+// 	return 0;
+// }
