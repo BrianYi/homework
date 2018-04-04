@@ -148,42 +148,42 @@
  *	unary predicate(单参判断式) 
  *	binary predicate(双参判断式)
  */
-#include <vector>
-#include <iostream>
-#include <algorithm>
-#include <iterator>
-using namespace std;
-
-struct DoubleElem
-{
-	DoubleElem(int v1, int v2) :val1(v1), val2(v2) {}
-	friend ostream& operator<<(ostream& out, const DoubleElem& de)
-	{
-		out << "[" << de.val1 << "," << de.val2 << "]";
-		return out;
-	}
-	int val1;
-	int val2;
-};
-
-bool isDoubleOdd(const DoubleElem& de)	// unary predicate
-{
-	return de.val1 % 2 && de.val2 % 2;
-}
-
-
-bool isDoubleOddComp(const DoubleElem& de1, const DoubleElem& de2)	// binary predicate
-{
-	return de1.val1 < de2.val1 || (de1.val1 == de2.val1 && de1.val2 < de2.val2);
-}
-
-int main()
-{
-	vector<DoubleElem> vecDoubleElem{ DoubleElem(1,3), DoubleElem(4,1), DoubleElem(2,3), DoubleElem(3,3), DoubleElem(5,3) };
-	copy_if(vecDoubleElem.begin(), vecDoubleElem.end(), ostream_iterator<DoubleElem>(cout, " "), isDoubleOdd);
-	cout << endl;
- 	sort(vecDoubleElem.begin(), vecDoubleElem.end(), isDoubleOddComp);
- 	copy(vecDoubleElem.begin(), vecDoubleElem.end(), ostream_iterator<DoubleElem>(cout, " "));
-	cout << endl;
-	return 0;
-}
+// #include <vector>
+// #include <iostream>
+// #include <algorithm>
+// #include <iterator>
+// using namespace std;
+// 
+// struct DoubleElem
+// {
+// 	DoubleElem(int v1, int v2) :val1(v1), val2(v2) {}
+// 	friend ostream& operator<<(ostream& out, const DoubleElem& de)
+// 	{
+// 		out << "[" << de.val1 << "," << de.val2 << "]";
+// 		return out;
+// 	}
+// 	int val1;
+// 	int val2;
+// };
+// 
+// bool isDoubleOdd(const DoubleElem& de)	// unary predicate
+// {
+// 	return de.val1 % 2 && de.val2 % 2;
+// }
+// 
+// 
+// bool isDoubleOddComp(const DoubleElem& de1, const DoubleElem& de2)	// binary predicate
+// {
+// 	return de1.val1 < de2.val1 || (de1.val1 == de2.val1 && de1.val2 < de2.val2);
+// }
+// 
+// int main()
+// {
+// 	vector<DoubleElem> vecDoubleElem{ DoubleElem(1,3), DoubleElem(4,1), DoubleElem(2,3), DoubleElem(3,3), DoubleElem(5,3) };
+// 	copy_if(vecDoubleElem.begin(), vecDoubleElem.end(), ostream_iterator<DoubleElem>(cout, " "), isDoubleOdd);
+// 	cout << endl;
+//  	sort(vecDoubleElem.begin(), vecDoubleElem.end(), isDoubleOddComp);
+//  	copy(vecDoubleElem.begin(), vecDoubleElem.end(), ostream_iterator<DoubleElem>(cout, " "));
+// 	cout << endl;
+// 	return 0;
+// }
