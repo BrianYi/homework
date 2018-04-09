@@ -127,6 +127,8 @@
     <ClCompile Include="2018-4-2-main.cpp" />
     <ClCompile Include="2018-4-3-main.cpp" />
     <ClCompile Include="2018-4-4-main.cpp" />
+    <ClCompile Include="2018-4-8-main.cpp" />
+    <ClCompile Include="2018-4-9-main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
