@@ -184,63 +184,63 @@
 /*
  *	generic and numeric algorithmn
  */
-#include <iostream>
-#include <algorithm>
-#include <iterator>
-#include <list>
-#include <string>
-#include <sstream>
-#include <numeric>
-#include <iomanip>
-using namespace std;
-
-template <typename Container>
-void print_container(Container& c, string endStr = "")
-{
-	for (const auto& elem : c)
-		cout << elem << " ";
-	cout << endStr;
-}
-
-int main()
-{
-	// for_each
-	list<string> coll{ "0.1 0.3 0.62", "1 0.5 0.5 0.03", "1 2 3 0.6" };
-	for_each(coll.begin(), coll.end(), [](const auto& elem) { 
-		istringstream str(elem);
-		cout << elem << ": " << accumulate(istream_iterator<double>(str), istream_iterator<double>(), 0.0) << endl;
-	});
-
-	// count_if
-	cout << "contains value which is bigger than 1: " << count_if(coll.begin(), coll.end(), [](const auto& elem) {
-		istringstream str(elem);
-		istream_iterator<double> iter(str);
-		istream_iterator<double> iter_end;
-		while (iter != iter_end)
-		{
-			if (*iter >= 1)
-				return true;
-			advance(iter, 1);
-		}
-		return false;
-	}) << endl;
-
-	// minmax_element
-	for_each(coll.begin(), coll.end(), [](const auto& elem) {
-		istringstream str(elem);
-		istream_iterator<double> iter(str);
-		istream_iterator<double> iter_end;
-		auto minmax_elem = minmax_element(iter, iter_end);
-		cout << setiosflags(ios::left);
-		cout << setw(20) << elem
-			<< setw(10) << "min is " << setw(10) << *minmax_elem.first
-			<< setw(10) << "max is " << setw(10) << *minmax_elem.second << endl;
-	});
-
-	// generate
-	generate(coll.begin(), coll.end(), []() { return "asd"; });
-	print_container(coll, "\n");
-
-
-	return 0;
-}
+//#include <iostream>
+//#include <algorithm>
+//#include <iterator>
+//#include <list>
+//#include <string>
+//#include <sstream>
+//#include <numeric>
+//#include <iomanip>
+//using namespace std;
+//
+//template <typename Container>
+//void print_container(Container& c, string endStr = "")
+//{
+//	for (const auto& elem : c)
+//		cout << elem << " ";
+//	cout << endStr;
+//}
+//
+//int main()
+//{
+//	// for_each
+//	list<string> coll{ "0.1 0.3 0.62", "1 0.5 0.5 0.03", "1 2 3 0.6" };
+//	for_each(coll.begin(), coll.end(), [](const auto& elem) { 
+//		istringstream str(elem);
+//		cout << elem << ": " << accumulate(istream_iterator<double>(str), istream_iterator<double>(), 0.0) << endl;
+//	});
+//
+//	// count_if
+//	cout << "contains value which is bigger than 1: " << count_if(coll.begin(), coll.end(), [](const auto& elem) {
+//		istringstream str(elem);
+//		istream_iterator<double> iter(str);
+//		istream_iterator<double> iter_end;
+//		while (iter != iter_end)
+//		{
+//			if (*iter >= 1)
+//				return true;
+//			advance(iter, 1);
+//		}
+//		return false;
+//	}) << endl;
+//
+//	// minmax_element
+//	for_each(coll.begin(), coll.end(), [](const auto& elem) {
+//		istringstream str(elem);
+//		istream_iterator<double> iter(str);
+//		istream_iterator<double> iter_end;
+//		auto minmax_elem = minmax_element(iter, iter_end);
+//		cout << setiosflags(ios::left);
+//		cout << setw(20) << elem
+//			<< setw(10) << "min is " << setw(10) << *minmax_elem.first
+//			<< setw(10) << "max is " << setw(10) << *minmax_elem.second << endl;
+//	});
+//
+//	// generate
+//	generate(coll.begin(), coll.end(), []() { return "asd"; });
+//	print_container(coll, "\n");
+//
+//
+//	return 0;
+//}
