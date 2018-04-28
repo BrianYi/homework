@@ -57,5 +57,11 @@
     <ClCompile Include="2018-4-13-main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="2018-4-17-main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="2018-4-18-main.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

@@ -128,6 +128,8 @@
     <ClCompile Include="2018-4-11-main.cpp" />
     <ClCompile Include="2018-4-12-main.cpp" />
     <ClCompile Include="2018-4-13-main.cpp" />
+    <ClCompile Include="2018-4-17-main.cpp" />
+    <ClCompile Include="2018-4-18-main.cpp" />
     <ClCompile Include="2018-4-2-main.cpp" />
     <ClCompile Include="2018-4-3-main.cpp" />
     <ClCompile Include="2018-4-4-main.cpp" />
