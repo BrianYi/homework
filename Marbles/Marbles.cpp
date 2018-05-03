@@ -276,9 +276,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: 在此处添加使用 hdc 的任何绘图代码...
+<<<<<<< HEAD
 			DeleteObject(SelectObject(hdc, GetStockObject(SYSTEM_FIXED_FONT)));
 			DeleteObject(SelectObject(hdc, GetStockObject(DC_BRUSH)));
 			SetMapMode(hdc, MM_ISOTROPIC);
+=======
+			SelectObject(hdc, GetStockObject(DC_BRUSH));
+			
+			SetMapMode(hdc, MM_ANISOTROPIC);
+>>>>>>> 5c706bacc4533805091cc4685065ddc232c71ae5
 			SetWindowExtEx(hdc, cxClient, cyClient, nullptr);
 			SetWindowOrgEx(hdc, 0, 0, nullptr);
 			SetViewportExtEx(hdc, cxClient, cyClient, nullptr);
@@ -301,7 +307,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_TIMER:
 	{
 		DWORD currentTimePoint = GetTickCount();
-		static double v_g = 4.0f;
+		static double v_g = 7.0f;
 
 		// △t
 		deltaDuration = (currentTimePoint - lastTimePoint) / 10;
