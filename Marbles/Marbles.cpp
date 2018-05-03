@@ -5,8 +5,22 @@
 #include "Marbles.h"
 #include <math.h>
 #include <time.h>
-#define MAX_LOADSTRING 100
-#define MAX_DYRECT 10
+#define MAX_LOADSTRING  100
+#define MAX_DYRECT      10
+#define FRAMES_PER_SEC  25
+#define PAUSE		    TRUE
+#define WITH_RATIO		5
+#define HEIGHT_RATIO	7
+
+#define ID_MENU			0
+#define ID_FRAME_RATE	1
+#define ID_GRAVITY		2
+#define ID_RESISTANCE	3
+#define ID_NUM			4
+#define ID_SHAPE		5
+#define ID_FONT_TYPE	6
+#define ID_OK			7
+
 // 全局变量: 
 HINSTANCE hInst;                                // 当前实例
 WCHAR szTitle[MAX_LOADSTRING];                  // 标题栏文本
@@ -22,12 +36,16 @@ typedef struct DynamicRect
 	DWORD	rgb;
 }DYRECT,*PDYRECT;
 DYRECT sDyRects[MAX_DYRECT];
+HWND /*hwndCanvas, */hwndMenu;
+HWND hwndFrameRate, hwndGravity, hwndResistance, hwndNum, hwndShape, hwndFontType, hwndOK;
 
 // 此代码模块中包含的函数的前向声明: 
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+
+
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -87,7 +105,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hInstance      = hInstance;
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MARBLES));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
+    wcex.hbrBackground  = (HBRUSH)GetStockObject(BLACK_BRUSH);
     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_MARBLES);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
@@ -136,22 +154,48 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-	//static RECT rcTarget[4] = { {0,0,100,100}, {100,0,200,100}, {300,0,400,100 }, {400,0,500,100} };
-	static LONG cxClient = 0, cyClient = 0;
-	//static double h_deltaMove = 0.0f, v_deltaMove = 0.0f;
-	//static double v_g = 9.8f, v_v0  = 0.0f, v_vt = 0.0f, v_f = 1.5f, v_at = 0.0f;
-	//static double h_vt = 5.0f;
+	static LONG cxClient = 0, cyClient = 0, cxChar = 0, cyChar = 0, cxMenuClient = 0, cyMenuClient = 0;
+	static RECT rcCanvas, rcMenu;
 	static DWORD deltaDuration = 0, lastTimePoint = 0;
-	//static HRGN hRgn1, hRgn2, hRgnClip;
-	//static BOOL h_fSign = TRUE, v_fSign = TRUE;
-	//RECT rcNewTarget;
+	HINSTANCE	hInstance;
     switch (message)
     {
 	case WM_CREATE:
+		//获取字体宽度和高度
+		cxChar = LOWORD(GetDialogBaseUnits());
+		cyChar = HIWORD(GetDialogBaseUnits());
+
+		//获取实例
+		hInstance = (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE);
+
+		//创建左边画布窗口
+// 		hwndCanvas = CreateWindow(TEXT("static"),
+// 			NULL, WS_CHILD | WS_VISIBLE | SS_WHITERECT, 0, 0, 0, 0, hWnd, (HMENU)ID_CANVAS, hInstance, NULL);
+		
+		//创建右边菜单窗口
+		hwndMenu = CreateWindow(TEXT("static"),
+			NULL, WS_CHILD | WS_VISIBLE | SS_WHITERECT, 0, 0, 0, 0, hWnd, (HMENU)ID_MENU, hInstance, NULL);
+
+		//创建控件
+		hwndFrameRate = CreateWindow(TEXT("button"),
+			TEXT("帧率"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_FRAME_RATE, hInstance, NULL);
+		hwndGravity = CreateWindow(TEXT("button"),
+			TEXT("重力"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_GRAVITY, hInstance, NULL);
+		hwndResistance = CreateWindow(TEXT("button"),
+			TEXT("阻力"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_RESISTANCE, hInstance, NULL);
+		hwndNum = CreateWindow(TEXT("button"),
+			TEXT("数量"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_NUM, hInstance, NULL);
+		hwndShape = CreateWindow(TEXT("button"),
+			TEXT("形状"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_SHAPE, hInstance, NULL);
+		hwndFontType = CreateWindow(TEXT("button"),
+			TEXT("字体"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_FONT_TYPE, hInstance, NULL);
+		hwndOK = CreateWindow(TEXT("button"),
+			TEXT("确定"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0, 0, 0, hwndMenu, (HMENU)ID_OK, hInstance, NULL);
+
 		/*
 			初始化方块
 		*/
-		srand(time(nullptr));	// 生成随机数种子
+		srand((unsigned int)time(nullptr));	// 生成随机数种子
 		ZeroMemory(&sDyRects, sizeof(sDyRects));
 		for (auto& dyRect : sDyRects)
 		{
@@ -165,23 +209,51 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		/*
 			设置计时器
 		*/
-		SetTimer(hWnd, 1, 10, nullptr);
-		lastTimePoint = GetTickCount();
+
+		if (!PAUSE)
+			SetTimer(hWnd, 1, (UINT)(1000.0f / FRAMES_PER_SEC), nullptr);
+		lastTimePoint    = GetTickCount();
 		break;
 	case WM_SIZE:
-		cxClient      = LOWORD(lParam);
-		cyClient      = HIWORD(lParam);
+	{
+		//获取客户区大小
+		cxClient = (LOWORD(lParam));
+		cyClient = (HIWORD(lParam));
 
+		//设置画布位置
+		GetClientRect(hWnd, &rcCanvas);
+		rcCanvas.right = (cxClient / WITH_RATIO) * (WITH_RATIO - 1);
+
+		//菜单窗口的位置为相对于最顶层窗口的位置
+		MoveWindow(hwndMenu, rcCanvas.right, 0, cxClient - rcCanvas.right, cyClient, TRUE);
+		GetClientRect(hwndMenu, &rcMenu);
+		cxMenuClient = rcMenu.right - rcMenu.left;
+		cyMenuClient = rcMenu.bottom;
+
+		//设置控件位置,控件的位置为相对于父窗口的位置
+		LONG hUnit = 0;
+		hUnit = cyMenuClient       / 7;
+		MoveWindow(hwndFrameRate,  0, hUnit * 0, cxMenuClient, hUnit, TRUE);
+		MoveWindow(hwndGravity,    0, hUnit * 1, cxMenuClient, hUnit, TRUE);
+		MoveWindow(hwndResistance, 0, hUnit * 2, cxMenuClient, hUnit, TRUE);
+		MoveWindow(hwndNum,        0, hUnit * 3, cxMenuClient, hUnit, TRUE);
+		MoveWindow(hwndShape,      0, hUnit * 4, cxMenuClient, hUnit, TRUE);
+		MoveWindow(hwndFontType,   0, hUnit * 5, cxMenuClient, hUnit, TRUE);
+		MoveWindow(hwndOK,         0, hUnit * 6, cxMenuClient, hUnit, TRUE);
+
+		//随机生成形状
 		for (auto& dyRect : sDyRects)
 		{
-			                   //  随机生成
-			dyRect.rc.left     = rand() % (cxClient    - dyRect.w);
-			dyRect.rc.top      = rand() % (cyClient    - dyRect.h);
-			dyRect.rc.right    = dyRect.rc.left        + dyRect.w;
-			dyRect.rc.bottom   = dyRect.rc.top         - dyRect.h;
-			dyRect.rgb         = rand() % DWORD(-1);
+			//  随机生成
+			SetRect(&dyRect.rc,
+				rand() % (rcCanvas.right - dyRect.w),
+				rand() % (rcCanvas.bottom - dyRect.h),
+				dyRect.rc.left + dyRect.w,
+				dyRect.rc.top - dyRect.h);
+			dyRect.rgb = rand() % DWORD(-1);
 		}
-		break;
+		break; 
+	}
     case WM_COMMAND:
         {
             int wmId = LOWORD(wParam);
@@ -204,13 +276,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: 在此处添加使用 hdc 的任何绘图代码...
-			SelectObject(hdc, GetStockObject(DC_BRUSH));
-			
+			DeleteObject(SelectObject(hdc, GetStockObject(SYSTEM_FIXED_FONT)));
+			DeleteObject(SelectObject(hdc, GetStockObject(DC_BRUSH)));
 			SetMapMode(hdc, MM_ISOTROPIC);
 			SetWindowExtEx(hdc, cxClient, cyClient, nullptr);
 			SetWindowOrgEx(hdc, 0, 0, nullptr);
 			SetViewportExtEx(hdc, cxClient, cyClient, nullptr);
 			SetViewportOrgEx(hdc, 0, 0, nullptr);
+			//Rectangle(hdc, ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right, ps.rcPaint.bottom);
 			for (auto& dyRect : sDyRects)
 			{
 				SetDCBrushColor(hdc, dyRect.rgb);
@@ -265,16 +338,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 			             // 计算新位置
 			RECT rcNew;
-			rcNew.left   = dyRect.rc.left + dyRect.h_deltaMove;
-			rcNew.right  = rcNew.left     + dyRect.w;
-			rcNew.top    = dyRect.rc.top  + dyRect.v_deltaMove;
-			rcNew.bottom = rcNew.top      + dyRect.h;
+			rcNew.left   = dyRect.rc.left + (LONG)dyRect.h_deltaMove;
+			rcNew.right  = rcNew.left     + (LONG)dyRect.w;
+			rcNew.top    = dyRect.rc.top  + (LONG)dyRect.v_deltaMove;
+			rcNew.bottom = rcNew.top      + (LONG)dyRect.h;
 
 			// 是否到达上下下边界
-			if (rcNew.bottom >= cyClient)
+			if (rcNew.bottom >= rcCanvas.bottom)
 			{
 				dyRect.v_sign = !dyRect.v_sign;
-				rcNew.bottom  = 2            * cyClient - rcNew.bottom;
+				rcNew.bottom  = 2            * rcCanvas.bottom - rcNew.bottom;
 				rcNew.top     = rcNew.bottom - dyRect.h;
 			}
 			else if (dyRect.v_v0 < 0.0f)
@@ -284,7 +357,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 
 			// 是否到达左右边界
-			if (rcNew.left < 0.0f || rcNew.right >= cxClient)
+			if (rcNew.left < 0.0f || rcNew.right >= rcCanvas.right)
 			{
 				dyRect.h_sign = !dyRect.h_sign;
 			}
@@ -292,7 +365,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			// 合并区域
 			dyRect.hRgnOld = CreateRectRgn(dyRect.rc.left, dyRect.rc.top, dyRect.rc.right, dyRect.rc.bottom);
 			dyRect.hRgnNew = CreateRectRgn(rcNew.left, rcNew.top, rcNew.right, rcNew.bottom);
-			//CombineRgn(dyRect.hRgn, dyRect.hRgnOld, dyRect.hRgnNew, RGN_OR);
+			CombineRgn(dyRect.hRgn, dyRect.hRgnOld, dyRect.hRgnNew, RGN_OR);
 
 			dyRect.rc = rcNew;
 
