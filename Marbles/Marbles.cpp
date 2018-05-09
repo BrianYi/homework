@@ -245,11 +245,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		for (auto& dyRect : sDyRects)
 		{
 			//  随机生成
-			SetRect(&dyRect.rc,
-				rand() % (rcCanvas.right - dyRect.w),
-				rand() % (rcCanvas.bottom - dyRect.h),
-				dyRect.rc.left + dyRect.w,
-				dyRect.rc.top - dyRect.h);
+			dyRect.rc.left = rand() % (rcCanvas.right - dyRect.w);
+			dyRect.rc.top = rand() % (rcCanvas.bottom - dyRect.h);
+			dyRect.rc.right = dyRect.rc.left + dyRect.w;
+			dyRect.rc.bottom = dyRect.rc.top + dyRect.h;
 			dyRect.rgb = rand() % DWORD(-1);
 		}
 		break; 
@@ -276,15 +275,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: 在此处添加使用 hdc 的任何绘图代码...
-<<<<<<< HEAD
 			DeleteObject(SelectObject(hdc, GetStockObject(SYSTEM_FIXED_FONT)));
 			DeleteObject(SelectObject(hdc, GetStockObject(DC_BRUSH)));
 			SetMapMode(hdc, MM_ISOTROPIC);
-=======
-			SelectObject(hdc, GetStockObject(DC_BRUSH));
-			
-			SetMapMode(hdc, MM_ANISOTROPIC);
->>>>>>> 5c706bacc4533805091cc4685065ddc232c71ae5
 			SetWindowExtEx(hdc, cxClient, cyClient, nullptr);
 			SetWindowOrgEx(hdc, 0, 0, nullptr);
 			SetViewportExtEx(hdc, cxClient, cyClient, nullptr);
