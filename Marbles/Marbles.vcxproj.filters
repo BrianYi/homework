@@ -30,12 +30,18 @@
     <ClInclude Include="Marbles.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="DlgAbout.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Marbles.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="DlgAbout.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
