@@ -40,7 +40,7 @@
 #include <map>
 
 #include <tcpmib.h>
-
+#include <winternl.h>
 
 // TODO:  在此处引用程序需要的其他头文件
 #define RC_WIDTH(rc)	(rc.right - rc.left)

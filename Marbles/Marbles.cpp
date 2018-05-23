@@ -6,6 +6,8 @@
 #include "DlgAbout.h"
 #include <math.h>
 #include <time.h>
+#include <vector>
+using namespace std;
 #define MAX_LOADSTRING  100
 #define MAX_DYRECT      10
 
@@ -27,6 +29,9 @@ FLOAT g_v_g = 7.0f, g_v_f = 1.0f;
 HINSTANCE g_hInst;                                // 当前实例
 WCHAR szTitle[MAX_LOADSTRING];                  // 标题栏文本
 WCHAR szWindowClass[MAX_LOADSTRING];            // 主窗口类名
+vector<LOGFONT*> g_vecLogFont;
+LOGFONT* g_curLogFont;
+enum Shape;
 typedef struct DynamicRect
 {
 	RECT	rc;
@@ -36,6 +41,7 @@ typedef struct DynamicRect
 	BOOL	h_sign, v_sign;
 	HRGN	hRgn, hRgnNew, hRgnOld;
 	DWORD	rgb;
+	Shape	shape;
 }DYRECT,*PDYRECT;
 DYRECT *sDyRects;
 //HWND /*hwndCanvas, */hwndMenu;
@@ -45,15 +51,37 @@ RECT rcCanvas, rcOption;
 DWORD deltaDuration = 0, lastTimePoint = 0;
 BOOL g_pause = TRUE;
 BOOL g_bFirst = TRUE;
-enum Shape { Circle, Rect };
+enum Shape {
+	Circle, Rect
+};
 struct ShapeVar
 {
 	Shape shape;
 	TCHAR name[32];
-}g_shapes[] = {
+} g_shapes[] = {
 	{ Circle, TEXT("圆形") },
 	{ Rect, TEXT("矩形") }
 };
+
+Shape FindShape(TCHAR *szShape)
+{
+	for (auto& shape : g_shapes)
+	{
+		if (_tccmp(shape.name, szShape) == 0)
+			return shape.shape;
+	}
+	return Shape::Circle;
+}
+
+LOGFONT* FindLogFont(TCHAR *szFaceName)
+{
+	for (auto& lf : g_vecLogFont)
+	{
+		if (_tccmp(lf->lfFaceName, szFaceName) == 0)
+			return lf;
+	}
+	return nullptr;
+}
 
 // 此代码模块中包含的函数的前向声明: 
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -113,6 +141,22 @@ static void OnMouseMove(HWND hWnd, WPARAM wParam, LPARAM lParam)
 
 static void OnLButtonDown(HWND hWnd, WPARAM wParam, LPARAM lParam) {}
 static void OnLButtonUp(HWND hWnd, WPARAM wParam, LPARAM lParam) {}
+
+int CALLBACK EnumFontFamExProc(
+	const LOGFONT    *lpelfe,
+	const TEXTMETRIC *lpntme,
+	DWORD      FontType,
+	LPARAM     lParam
+)
+{
+	HWND hWnd = (HWND)lParam;
+	ComboBox_AddString(GetDlgItem(hWnd, IDC_CBBOX_FONT_TYPE), lpelfe->lfFaceName);
+	LOGFONT *lf = new LOGFONT;
+	RtlCopyMemory(lf, lpelfe, sizeof(LOGFONT));
+	g_vecLogFont.push_back(lf);
+	return 1;
+}
+
 static void InitUI(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	TCHAR szBufferPlay[64];
@@ -140,6 +184,21 @@ static void InitUI(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		ComboBox_AddString(GetDlgItem(hWnd, IDC_CBBOX_SHAPE), g_shapes[i].name);
 	}
 	ComboBox_SetCurSel(GetDlgItem(hWnd, IDC_CBBOX_SHAPE), 0);
+	
+	//字体
+	HDC hdc = GetDC(hWnd);
+	LOGFONT logFont;
+	ZeroMemory(&logFont, sizeof(logFont));
+	logFont.lfFaceName[0] = TEXT('\0');
+	logFont.lfCharSet = DEFAULT_CHARSET;
+	//EnumFontFamiliesEx(hdc, &logFont, EnumFontFamExProc, (LPARAM)hWnd, 0);
+	//EnumFontFamilies(hdc, NULL, EnumFontFamExProc, (LPARAM)hWnd);
+	EnumFontFamilies(hdc, NULL, EnumFontFamExProc, (LPARAM)hWnd);
+	//EnumFonts(hdc, NULL, EnumFontFamExProc, (LPARAM)hWnd);
+	ReleaseDC(hWnd, hdc);
+	ComboBox_SetCurSel(GetDlgItem(hWnd, IDC_CBBOX_FONT_TYPE), 0);
+	ComboBox_GetText(GetDlgItem(hWnd, IDC_CBBOX_FONT_TYPE), szBuffer, sizeof(szBuffer));
+	g_curLogFont = FindLogFont(szBuffer);
 }
 
 static void OnInitDialog(HWND hWnd, WPARAM wParam, LPARAM lParam) 
@@ -161,6 +220,7 @@ static void OnInitDialog(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		dyRect.v_f = g_v_f;
 		dyRect.h_v0 = dyRect.h_vt = 2.0;
 		dyRect.h_sign = dyRect.v_sign = TRUE;
+		dyRect.shape = Circle;
 	}
 
 	/*
@@ -193,6 +253,11 @@ static void OnEndSession(HWND hWnd, WPARAM wParam, LPARAM lParam)
 
 static void OnCommand(HWND hWnd, WPARAM wParam, LPARAM lParam) 
 {
+	// Message Source		wParam(high word)					wParam(low word)				lParam
+	// Menu					0									Menu identifier(IDM_*)			0
+	// Accelerator			1									Accelerator identifier(IDM_*)	0
+	// Control				Control-defined notification code	Control identifier				Handle to the control window
+	
 	if (LOWORD(wParam) == IDM_EXIT)
 	{
 		OnExit(hWnd);
@@ -202,7 +267,7 @@ static void OnCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		DialogBoxParam(g_hInst, MAKEINTRESOURCE(DLG_ABOUT), hWnd, ProcDlgAbout, 0);
 		//DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 	}
-	else if (wParam == IDC_BTN_PAUSE)
+	else if (LOWORD(wParam) == IDC_BTN_PAUSE)
 	{
 		TCHAR szBuffer[64], szBufferPlay[64], szBufferPause[64];
 		GetDlgItemText(hWnd, IDC_BTN_PAUSE, szBuffer, ARRAYSIZE(szBuffer));
@@ -219,6 +284,35 @@ static void OnCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 			g_pause = TRUE;
 		}
 	}
+	else if (LOWORD(wParam) == IDC_CBBOX_SHAPE)
+	{
+		if (HIWORD(wParam) == CBN_SELCHANGE)
+		{
+			TCHAR szBuffer[64];
+			HWND hwndDlgShape = (HWND)lParam;
+			ComboBox_GetText(hwndDlgShape, szBuffer, sizeof(szBuffer));
+			Shape shape = FindShape(szBuffer);
+			for (int i = 0; i < g_num; ++i)
+			{
+				DYRECT& dyRect = sDyRects[i];
+				dyRect.shape = shape;
+			}
+			InvalidateRect(hWnd, nullptr, TRUE);
+		}
+	}
+	else if (LOWORD(wParam) == IDC_CBBOX_FONT_TYPE)
+	{
+		if (HIWORD(wParam) == CBN_SELCHANGE)
+		{
+			TCHAR szBuffer[64];
+			HWND hwndDlgFontType = (HWND)lParam;
+			ComboBox_GetText(hwndDlgFontType, szBuffer, sizeof(szBuffer));
+			g_curLogFont = FindLogFont(szBuffer);
+			//SendMessage(GetDlgItem(hWnd, DLG_MAIN), WM_SETFONT, (WPARAM)CreateFontIndirect(lf), TRUE);
+			//UpdateWindow(hWnd);
+			InvalidateRect(hWnd, nullptr, TRUE);
+		}
+	}
 }
 
 static void OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam) 
@@ -229,9 +323,11 @@ static void OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	BeginPaint(hWnd, &ps);
 	DeleteObject(SelectObject(ps.hdc, GetStockObject(WHITE_BRUSH)));
 	Rectangle(ps.hdc, rcClient.left - 1, rcClient.top - 1, rcClient.right + 1, rcClient.bottom + 1);
-	DeleteObject(SelectObject(ps.hdc, GetStockObject(SYSTEM_FIXED_FONT)));
 	DeleteObject(SelectObject(ps.hdc, GetStockObject(DC_BRUSH)));
-
+	DeleteObject(SelectObject(ps.hdc, CreateFontIndirect(g_curLogFont)));
+	TCHAR szBuffer[64];
+	_stprintf_s(szBuffer, TEXT("这是中文，用于字体测试"));
+	TextOut(ps.hdc, 10, 10, szBuffer, _tcslen(szBuffer));
 // 	SetMapMode(hdc, MM_ISOTROPIC);
 // 	SetWindowExtEx(hdc, cxClient, cyClient, nullptr);
 // 	SetWindowOrgEx(hdc, 0, 0, nullptr);
@@ -241,7 +337,17 @@ static void OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	{
 		DYRECT& dyRect = sDyRects[i];
 		SetDCBrushColor(ps.hdc, dyRect.rgb);
-		Ellipse(ps.hdc, dyRect.rc.left, dyRect.rc.top, dyRect.rc.right, dyRect.rc.bottom);
+		switch (dyRect.shape)
+		{
+		case Circle:
+			Ellipse(ps.hdc, dyRect.rc.left, dyRect.rc.top, dyRect.rc.right, dyRect.rc.bottom);
+			break;
+		case Rect:
+			Rectangle(ps.hdc, dyRect.rc.left, dyRect.rc.top, dyRect.rc.right, dyRect.rc.bottom);
+			break;
+		default:
+			break;
+		}
 	}
 	EndPaint(hWnd, &ps);
 }
@@ -420,6 +526,16 @@ static void Exit(HWND hWnd, bool restart)
 	// Exit
 	DestroyWindow(hWnd);
 	PostQuitMessage(0);
+
+	// stop timer
+	KillTimer(hWnd, 1);
+
+	// Release memory
+	for (auto& var : g_vecLogFont)
+	{
+		delete var;
+	}
+	g_vecLogFont.clear();
 }
 
 static void OnExit(HWND hWnd)
@@ -427,12 +543,11 @@ static void OnExit(HWND hWnd)
 	Exit(hWnd, false);
 }
 
-//static void OnCtlColorDlg(HWND hWnd, WPARAM wParam, LPARAM lParam)
+
+//static void OnSetFont(HWND hWnd, WPARAM wParam, LPARAM lParam)
 //{
-//	if (wParam == WM_CTLCOLORDLG)
-//	{
-//		return (INT_PTR)GetStockObject(WHITE_BRUSH);
-//	}
+//	HFONT font = (HFONT)wParam;
+//
 //}
 
 ///----------------------------------------------------------------------------------------------//
@@ -442,320 +557,28 @@ INT_PTR CALLBACK ProcDlgMain(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 #define PROCESS_MSG(MSG, HANDLER) if(uMsg == MSG) { HANDLER(hWnd, wParam, lParam); return TRUE; }
 
-		PROCESS_MSG(WM_MOUSEMOVE, OnMouseMove)
-		PROCESS_MSG(WM_LBUTTONDOWN, OnLButtonDown)
-		PROCESS_MSG(WM_LBUTTONUP, OnLButtonUp)
-		PROCESS_MSG(WM_INITDIALOG, OnInitDialog)      // Init
-		PROCESS_MSG(WM_CLOSE, OnClose)
-		PROCESS_MSG(WM_QUERYENDSESSION, OnQueryEndSession)
-		PROCESS_MSG(WM_ENDSESSION, OnEndSession)
-		PROCESS_MSG(WM_COMMAND, OnCommand)
+	PROCESS_MSG(WM_MOUSEMOVE, OnMouseMove);
+	PROCESS_MSG(WM_LBUTTONDOWN, OnLButtonDown);
+	PROCESS_MSG(WM_LBUTTONUP, OnLButtonUp);
+	PROCESS_MSG(WM_INITDIALOG, OnInitDialog);     // Init
+	PROCESS_MSG(WM_CLOSE, OnClose);
+	PROCESS_MSG(WM_QUERYENDSESSION, OnQueryEndSession);
+	PROCESS_MSG(WM_ENDSESSION, OnEndSession);
+	PROCESS_MSG(WM_COMMAND, OnCommand);
 		//PROCESS_MSG(WM_USER_TRAY, OnUserTray)        // Tray icon messages
 		//PROCESS_MSG(WM_RECONNECT, OnReconnect)       // Resume from hibernation
-		PROCESS_MSG(WM_PAINT, OnPaint)
-		PROCESS_MSG(WM_SIZE, OnSize)            // Resize controls
-		PROCESS_MSG(WM_GETMINMAXINFO, OnGetMinMaxInfo)   // Set Window's minimun size
-		PROCESS_MSG(WM_NOTIFY, OnNotify)
-		PROCESS_MSG(WM_TIMER, OnTimer)
+	PROCESS_MSG(WM_PAINT, OnPaint);
+	PROCESS_MSG(WM_SIZE, OnSize);         // Resize controls
+	PROCESS_MSG(WM_GETMINMAXINFO, OnGetMinMaxInfo);  // Set Window's minimun size
+	PROCESS_MSG(WM_NOTIFY, OnNotify);
+	PROCESS_MSG(WM_TIMER, OnTimer);
 		//PROCESS_MSG(WM_CLEAR_DB_AND_RESTART, OnClearAndRestart)
 		//PROCESS_MSG(WM_RESTART, OnRestart)
 		//PROCESS_MSG(WM_CTLCOLORDLG, OnCtlColorDlg)
-
+	//PROCESS_MSG(WM_SETFONT, OnSetFont);
 #undef PROCESS_MSG
-		return FALSE;
+	return FALSE;
 }
-
-
-//
-//  函数: MyRegisterClass()
-//
-//  目的: 注册窗口类。
-//
-// ATOM MyRegisterClass(HINSTANCE hInstance)
-// {
-//     WNDCLASSEXW wcex;
-// 
-//     wcex.cbSize = sizeof(WNDCLASSEX);
-// 
-//     wcex.style          = CS_HREDRAW | CS_VREDRAW;
-//     wcex.lpfnWndProc    = WndProc;
-//     wcex.cbClsExtra     = 0;
-//     wcex.cbWndExtra     = 0;
-//     wcex.hInstance      = hInstance;
-//     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_MARBLES));
-//     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-//     wcex.hbrBackground  = (HBRUSH)GetStockObject(BLACK_BRUSH);
-//     wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_MARBLES);
-//     wcex.lpszClassName  = szWindowClass;
-//     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
-// 
-//     return RegisterClassExW(&wcex);
-// }
-
-//
-//   函数: InitInstance(HINSTANCE, int)
-//
-//   目的: 保存实例句柄并创建主窗口
-//
-//   注释: 
-//
-//        在此函数中，我们在全局变量中保存实例句柄并
-//        创建和显示主程序窗口。
-//
-// BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
-// {
-//    hInst = hInstance; // 将实例句柄存储在全局变量中
-// 
-//    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-//       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
-// 
-//    if (!hWnd)
-//    {
-//       return FALSE;
-//    }
-// 
-//    ShowWindow(hWnd, nCmdShow);
-//    UpdateWindow(hWnd);
-// 
-//    return TRUE;
-// }
-
-
-//
-//  函数: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  目的:    处理主窗口的消息。
-//
-//  WM_COMMAND  - 处理应用程序菜单
-//  WM_PAINT    - 绘制主窗口
-//  WM_DESTROY  - 发送退出消息并返回
-//
-//
-// LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
-// {
-// 	
-// 	HINSTANCE	hInstance;
-//     switch (message)
-//     {
-// 	case WM_CREATE:
-// 		//获取字体宽度和高度
-// 		cxChar = LOWORD(GetDialogBaseUnits());
-// 		cyChar = HIWORD(GetDialogBaseUnits());
-// 		//118/80
-// 		//获取实例
-// 		hInstance = (HINSTANCE)GetWindowLongPtr(hWnd, GWLP_HINSTANCE);
-// 
-// 		//创建左边画布窗口
-// // 		hwndCanvas = CreateWindow(TEXT("static"),
-// // 			NULL, WS_CHILD | WS_VISIBLE | SS_WHITERECT, 0, 0, 0, 0, hWnd, (HMENU)ID_CANVAS, hInstance, NULL);
-// 		
-// 		//创建右边菜单窗口
-// 		hwndMenu = CreateWindow(TEXT("static"),
-// 			NULL, WS_CHILD | WS_VISIBLE | SS_WHITERECT, 0, 0, 0, 0, hWnd, (HMENU)ID_MENU, hInstance, NULL);
-// 
-// 		//创建控件
-// 		hwndFrameRate = CreateWindow(TEXT("button"),
-// 			TEXT("帧率"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_FRAME_RATE, hInstance, NULL);
-// 		hwndGravity = CreateWindow(TEXT("button"),
-// 			TEXT("重力"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_GRAVITY, hInstance, NULL);
-// 		hwndResistance = CreateWindow(TEXT("button"),
-// 			TEXT("阻力"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_RESISTANCE, hInstance, NULL);
-// 		hwndNum = CreateWindow(TEXT("button"),
-// 			TEXT("数量"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_NUM, hInstance, NULL);
-// 		hwndShape = CreateWindow(TEXT("button"),
-// 			TEXT("形状"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_SHAPE, hInstance, NULL);
-// 		hwndFontType = CreateWindow(TEXT("button"),
-// 			TEXT("字体"), WS_CHILD | WS_VISIBLE | BS_TEXT, 0, 0, 0, 0, hwndMenu, (HMENU)ID_FONT_TYPE, hInstance, NULL);
-// 		hwndOK = CreateWindow(TEXT("button"),
-// 			TEXT("确定"), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 0, 0, 0, 0, hwndMenu, (HMENU)ID_OK, hInstance, NULL);
-// 
-// 		/*
-// 			初始化方块
-// 		*/
-// 		srand((unsigned int)time(nullptr));	// 生成随机数种子
-// 		ZeroMemory(&sDyRects, sizeof(sDyRects));
-// 		for (auto& dyRect : sDyRects)
-// 		{
-// 			dyRect.w      = dyRect.h = 100;
-// 			dyRect.v_at   = 0.0;
-// 			dyRect.v_f    = 1.0;
-// 			dyRect.h_v0   = dyRect.h_vt = 2.0; 
-// 			dyRect.h_sign = dyRect.v_sign = TRUE;
-// 		}
-// 
-// 		/*
-// 			设置计时器
-// 		*/
-// 
-// 		if (!PAUSE)
-// 			SetTimer(hWnd, 1, (UINT)(1000.0f / FRAMES_PER_SEC), nullptr);
-// 		lastTimePoint    = GetTickCount();
-// 		break;
-// 	case WM_SIZE:
-// 	{
-// 		//获取客户区大小
-// 		cxClient = (LOWORD(lParam));
-// 		cyClient = (HIWORD(lParam));
-// 
-// 		//设置画布位置
-// 		GetClientRect(hWnd, &rcCanvas);
-// 		rcCanvas.right = (cxClient / WITH_RATIO) * (WITH_RATIO - 1);
-// 
-// 		//菜单窗口的位置为相对于最顶层窗口的位置
-// 		MoveWindow(hwndMenu, rcCanvas.right, 0, cxClient - rcCanvas.right, cyClient, TRUE);
-// 		GetClientRect(hwndMenu, &rcMenu);
-// 		cxMenuClient = rcMenu.right - rcMenu.left;
-// 		cyMenuClient = rcMenu.bottom;
-// 
-// 		//设置控件位置,控件的位置为相对于父窗口的位置
-// 		LONG hUnit = 0;
-// 		hUnit = cyMenuClient       / 7;
-// 		MoveWindow(hwndFrameRate,  0, hUnit * 0, cxMenuClient, hUnit, TRUE);
-// 		MoveWindow(hwndGravity,    0, hUnit * 1, cxMenuClient, hUnit, TRUE);
-// 		MoveWindow(hwndResistance, 0, hUnit * 2, cxMenuClient, hUnit, TRUE);
-// 		MoveWindow(hwndNum,        0, hUnit * 3, cxMenuClient, hUnit, TRUE);
-// 		MoveWindow(hwndShape,      0, hUnit * 4, cxMenuClient, hUnit, TRUE);
-// 		MoveWindow(hwndFontType,   0, hUnit * 5, cxMenuClient, hUnit, TRUE);
-// 		MoveWindow(hwndOK,         0, hUnit * 6, cxMenuClient, hUnit, TRUE);
-// 
-// 		//随机生成形状
-// 		for (auto& dyRect : sDyRects)
-// 		{
-// 			//  随机生成
-// 			dyRect.rc.left = rand() % (rcCanvas.right - dyRect.w);
-// 			dyRect.rc.top = rand() % (rcCanvas.bottom - dyRect.h);
-// 			dyRect.rc.right = dyRect.rc.left + dyRect.w;
-// 			dyRect.rc.bottom = dyRect.rc.top + dyRect.h;
-// 			dyRect.rgb = rand() % DWORD(-1);
-// 		}
-// 		break; 
-// 	}
-//     case WM_COMMAND:
-//         {
-//             int wmId = LOWORD(wParam);
-//             // 分析菜单选择: 
-//             switch (wmId)
-//             {
-//             case IDM_ABOUT:
-//                 DialogBox(g_hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-//                 break;
-//             case IDM_EXIT:
-//                 DestroyWindow(hWnd);
-//                 break;
-//             default:
-//                 return DefWindowProc(hWnd, message, wParam, lParam);
-//             }
-//         }
-//         break;
-//     case WM_PAINT:
-//         {
-//             PAINTSTRUCT ps;
-//             HDC hdc = BeginPaint(hWnd, &ps);
-//             // TODO: 在此处添加使用 hdc 的任何绘图代码...
-// 			DeleteObject(SelectObject(hdc, GetStockObject(SYSTEM_FIXED_FONT)));
-// 			DeleteObject(SelectObject(hdc, GetStockObject(DC_BRUSH)));
-// 			SetMapMode(hdc, MM_ISOTROPIC);
-// 			SetWindowExtEx(hdc, cxClient, cyClient, nullptr);
-// 			SetWindowOrgEx(hdc, 0, 0, nullptr);
-// 			SetViewportExtEx(hdc, cxClient, cyClient, nullptr);
-// 			SetViewportOrgEx(hdc, 0, 0, nullptr);
-// 			//Rectangle(hdc, ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right, ps.rcPaint.bottom);
-// 			for (auto& dyRect : sDyRects)
-// 			{
-// 				SetDCBrushColor(hdc, dyRect.rgb);
-// 				Ellipse(hdc, dyRect.rc.left, dyRect.rc.top, dyRect.rc.right, dyRect.rc.bottom);
-// 			}
-// 			//ValidateRect(hWnd, &rcTarget);
-// 
-// 			EndPaint(hWnd, &ps);
-//         }
-//         break;
-//     case WM_DESTROY:
-// 		KillTimer(hWnd, 1);
-//         PostQuitMessage(0);
-//         break;
-// 	case WM_TIMER:
-// 	{
-// 		DWORD currentTimePoint = GetTickCount();
-// 		static double v_g = 7.0f;
-// 
-// 		// △t
-// 		deltaDuration = (currentTimePoint - lastTimePoint) / 10;
-// 		lastTimePoint = currentTimePoint;
-// 
-// 		// 进行计算
-// 		for (auto& dyRect : sDyRects)
-// 		{
-// 			if (dyRect.v_sign)
-// 			{
-// 				                   // v,g方向相同，v增加
-// 				dyRect.v_at        = v_g                       - dyRect.v_f;
-// 				dyRect.v_vt        = dyRect.v_v0               + dyRect.v_at             * (deltaDuration);
-// 				dyRect.v_deltaMove = (pow(dyRect.v_vt, 2.0f)   - pow(dyRect.v_v0, 2.0f)) / (2.0f * dyRect.v_at);
-// 				dyRect.v_v0        = dyRect.v_vt;
-// 			}
-// 			else
-// 			{
-// 				                   // v,g方向相反，v减少
-// 				dyRect.v_at        = v_g                       + dyRect.v_f;
-// 				dyRect.v_vt        = dyRect.v_v0               - dyRect.v_at             * (deltaDuration);
-// 				dyRect.v_deltaMove = (pow(dyRect.v_vt, 2.0f)   - pow(dyRect.v_v0, 2.0f)) / (2.0f * dyRect.v_at);
-// 				dyRect.v_v0        = dyRect.v_vt;
-// 			}
-// 
-// 			if (dyRect.h_sign)
-// 			{
-// 				dyRect.h_deltaMove = dyRect.h_vt * (deltaDuration);
-// 			}
-// 			else
-// 			{
-// 				dyRect.h_deltaMove = -(dyRect.h_vt * (deltaDuration));
-// 			}
-// 
-// 			             // 计算新位置
-// 			RECT rcNew;
-// 			rcNew.left   = dyRect.rc.left + (LONG)dyRect.h_deltaMove;
-// 			rcNew.right  = rcNew.left     + (LONG)dyRect.w;
-// 			rcNew.top    = dyRect.rc.top  + (LONG)dyRect.v_deltaMove;
-// 			rcNew.bottom = rcNew.top      + (LONG)dyRect.h;
-// 
-// 			// 是否到达上下下边界
-// 			if (rcNew.bottom >= rcCanvas.bottom)
-// 			{
-// 				dyRect.v_sign = !dyRect.v_sign;
-// 				rcNew.bottom  = 2            * rcCanvas.bottom - rcNew.bottom;
-// 				rcNew.top     = rcNew.bottom - dyRect.h;
-// 			}
-// 			else if (dyRect.v_v0 < 0.0f)
-// 			{
-// 				dyRect.v_sign = !dyRect.v_sign;
-// 				dyRect.v_v0   = 0.0f;
-// 			}
-// 
-// 			// 是否到达左右边界
-// 			if (rcNew.left < 0.0f || rcNew.right >= rcCanvas.right)
-// 			{
-// 				dyRect.h_sign = !dyRect.h_sign;
-// 			}
-// 
-// 			// 合并区域
-// 			dyRect.hRgnOld = CreateRectRgn(dyRect.rc.left, dyRect.rc.top, dyRect.rc.right, dyRect.rc.bottom);
-// 			dyRect.hRgnNew = CreateRectRgn(rcNew.left, rcNew.top, rcNew.right, rcNew.bottom);
-// 			CombineRgn(dyRect.hRgn, dyRect.hRgnOld, dyRect.hRgnNew, RGN_OR);
-// 
-// 			dyRect.rc = rcNew;
-// 
-// 			// 擦出之前的图形
-// 			InvalidateRgn(hWnd, dyRect.hRgnOld, TRUE);
-// 			InvalidateRgn(hWnd, dyRect.hRgnNew, TRUE);
-// 		}
-// 		break;
-// 	}
-//     default:
-//         return DefWindowProc(hWnd, message, wParam, lParam);
-//     }
-//     return 0;
-// }
 
 // “关于”框的消息处理程序。
 INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
