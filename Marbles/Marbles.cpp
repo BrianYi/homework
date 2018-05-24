@@ -9,28 +9,34 @@
 #include <vector>
 using namespace std;
 #define MAX_LOADSTRING  100
-#define MAX_DYRECT      10
-
-#define WIDTH_RATIO		7
-#define HEIGHT_RATIO	7
-
-#define ID_MENU			0
-#define ID_FRAME_RATE	1
-#define ID_GRAVITY		2
-#define ID_RESISTANCE	3
-#define ID_NUM			4
-#define ID_SHAPE		5
-#define ID_FONT_TYPE	6
-#define ID_OK			7
 
 // 全局变量: 
-LONG g_framePerSec = 25, g_num = 10;
-FLOAT g_v_g = 7.0f, g_v_f = 1.0f;
+LONG g_framePerSec = 40, g_num = 10;
+FLOAT g_v_g = 3.0f, g_v_f = 1.0f;
 HINSTANCE g_hInst;                                // 当前实例
 WCHAR szTitle[MAX_LOADSTRING];                  // 标题栏文本
 WCHAR szWindowClass[MAX_LOADSTRING];            // 主窗口类名
 vector<LOGFONT*> g_vecLogFont;
 LOGFONT* g_curLogFont;
+DWORD g_mainDlgWidth = 0, g_mainDlgHeight = 0;
+SIZE g_szMax;
+TCHAR g_szFontInfo[][256] = 
+{
+	TEXT("FaceName: %s"),
+	TEXT("Height: %d"),
+	TEXT("Width: %d"),
+	TEXT("Escapement: %d"),
+	TEXT("Orientation: %d"),
+	TEXT("Weight: %d"),
+	TEXT("Italic: %d"),
+	TEXT("Underline: %d"),
+	TEXT("StrikeOut: %d"),
+	TEXT("CharSet: %d"),
+	TEXT("OutPrecision: %d"),
+	TEXT("ClipPrecision: %d"),
+	TEXT("Quality: %d"),
+	TEXT("PitchAndFamily: %d")
+};
 enum Shape;
 typedef struct DynamicRect
 {
@@ -47,7 +53,6 @@ DYRECT *sDyRects;
 //HWND /*hwndCanvas, */hwndMenu;
 //HWND hwndFrameRate, hwndGravity, hwndResistance, hwndNum, hwndShape, hwndFontType, hwndOK;
 
-RECT rcCanvas, rcOption;
 DWORD deltaDuration = 0, lastTimePoint = 0;
 BOOL g_pause = TRUE;
 BOOL g_bFirst = TRUE;
@@ -67,7 +72,7 @@ Shape FindShape(TCHAR *szShape)
 {
 	for (auto& shape : g_shapes)
 	{
-		if (_tccmp(shape.name, szShape) == 0)
+		if (_tcscmp(shape.name, szShape) == 0)
 			return shape.shape;
 	}
 	return Shape::Circle;
@@ -77,7 +82,7 @@ LOGFONT* FindLogFont(TCHAR *szFaceName)
 {
 	for (auto& lf : g_vecLogFont)
 	{
-		if (_tccmp(lf->lfFaceName, szFaceName) == 0)
+		if (_tcscmp(lf->lfFaceName, szFaceName) == 0)
 			return lf;
 	}
 	return nullptr;
@@ -90,6 +95,7 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 INT_PTR CALLBACK ProcDlgMain(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+SIZE CalculateFontInfo(HDC hdc, LOGFONT *lf);
 
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -131,16 +137,17 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     return (int) msg.wParam;
 }
 
-static void OnExit(HWND hWnd);
+static INT_PTR OnExit(HWND hWnd);
 
-static void OnMouseMove(HWND hWnd, WPARAM wParam, LPARAM lParam) 
+static INT_PTR OnMouseMove(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	/*HCURSOR hCursor = LoadCursor(NULL, IDC_IBEAM);
 	SetCursor(hCursor);*/
+	return TRUE;
 }
 
-static void OnLButtonDown(HWND hWnd, WPARAM wParam, LPARAM lParam) {}
-static void OnLButtonUp(HWND hWnd, WPARAM wParam, LPARAM lParam) {}
+static INT_PTR OnLButtonDown(HWND hWnd, WPARAM wParam, LPARAM lParam) { return TRUE; }
+static INT_PTR OnLButtonUp(HWND hWnd, WPARAM wParam, LPARAM lParam) { return TRUE; }
 
 int CALLBACK EnumFontFamExProc(
 	const LOGFONT    *lpelfe,
@@ -157,7 +164,51 @@ int CALLBACK EnumFontFamExProc(
 	return 1;
 }
 
-static void InitUI(HWND hWnd, WPARAM wParam, LPARAM lParam)
+
+//void ResizeWindow(HWND hWnd)
+//{
+//	//图形 + 字体栏 + 菜单
+//	g_mainDlgWidth = X_FONT_INFO + 10 + g_szMax.cx + 10 + 400;
+//	g_mainDlgHeight = max(500, 10 + g_szMax.cy * 16);
+//
+//	RECT rc;
+//	GetWindowRect(hWnd, &rc);
+//	MoveWindow(hWnd, rc.left, rc.top, g_mainDlgWidth, g_mainDlgHeight, TRUE);
+//
+//	//InvalidateRect(hWnd, nullptr, TRUE);
+//}
+
+void GenerateShapes(int num, Shape shape, int x, int y, int w, int h)
+{
+	if (sDyRects)
+	{
+		delete sDyRects;
+		sDyRects = nullptr;
+	}
+
+	sDyRects = new DYRECT[num];
+	ZeroMemory(sDyRects, sizeof(sDyRects[0]) * num);
+	//随机生成形状
+	for (int i = 0; i < num; ++i)
+	{
+		DYRECT& dyRect = sDyRects[i];
+		//  随机生成
+		dyRect.w = dyRect.h = 100;
+		dyRect.v_at = 0.0;
+		dyRect.v_f = g_v_f;
+		dyRect.h_v0 = dyRect.h_vt = 2.0;
+		dyRect.h_sign = dyRect.v_sign = TRUE;
+		dyRect.shape = shape;
+
+		dyRect.rc.left = rand() % ((x + w) - dyRect.w);
+		dyRect.rc.top = rand() % ((y + h) - dyRect.h);
+		dyRect.rc.right = dyRect.rc.left + dyRect.w;
+		dyRect.rc.bottom = dyRect.rc.top + dyRect.h;
+		dyRect.rgb = rand() % DWORD(-1);
+	}
+}
+
+static INT_PTR OnInitDialog(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	TCHAR szBufferPlay[64];
 	LoadString(g_hInst, IDS_BTN_PLAY, szBufferPlay, ARRAYSIZE(szBufferPlay));
@@ -184,6 +235,10 @@ static void InitUI(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		ComboBox_AddString(GetDlgItem(hWnd, IDC_CBBOX_SHAPE), g_shapes[i].name);
 	}
 	ComboBox_SetCurSel(GetDlgItem(hWnd, IDC_CBBOX_SHAPE), 0);
+	ComboBox_GetText(GetDlgItem(hWnd, IDC_CBBOX_SHAPE), szBuffer, sizeof(szBuffer));
+	Shape shape = FindShape(szBuffer);
+	
+
 	
 	//字体
 	HDC hdc = GetDC(hWnd);
@@ -195,63 +250,54 @@ static void InitUI(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	//EnumFontFamilies(hdc, NULL, EnumFontFamExProc, (LPARAM)hWnd);
 	EnumFontFamilies(hdc, NULL, EnumFontFamExProc, (LPARAM)hWnd);
 	//EnumFonts(hdc, NULL, EnumFontFamExProc, (LPARAM)hWnd);
-	ReleaseDC(hWnd, hdc);
 	ComboBox_SetCurSel(GetDlgItem(hWnd, IDC_CBBOX_FONT_TYPE), 0);
 	ComboBox_GetText(GetDlgItem(hWnd, IDC_CBBOX_FONT_TYPE), szBuffer, sizeof(szBuffer));
 	g_curLogFont = FindLogFont(szBuffer);
-}
-
-static void OnInitDialog(HWND hWnd, WPARAM wParam, LPARAM lParam) 
-{
-	// 初始化UI
-	InitUI(hWnd, wParam, lParam);
-
-	/*
-	初始化方块
-	*/
-	srand((unsigned int)time(nullptr));	// 生成随机数种子
-	sDyRects = new DYRECT[g_num];
-	ZeroMemory(sDyRects, sizeof(sDyRects[0]) * g_num);
-	for (int i = 0; i < g_num; ++i)
-	{
-		DYRECT& dyRect = sDyRects[i];
-		dyRect.w = dyRect.h = 100;
-		dyRect.v_at = 0.0;
-		dyRect.v_f = g_v_f;
-		dyRect.h_v0 = dyRect.h_vt = 2.0;
-		dyRect.h_sign = dyRect.v_sign = TRUE;
-		dyRect.shape = Circle;
-	}
+	DeleteObject(SelectObject(hdc, CreateFontIndirect(g_curLogFont)));
+	g_szMax = CalculateFontInfo(hdc, g_curLogFont);
+	ReleaseDC(hWnd, hdc);
 
 	/*
 	设置计时器
 	*/
-	SetTimer(hWnd, 400, (UINT)(1000.0f / g_framePerSec), nullptr);
+	SetTimer(hWnd, 1, (UINT)(1000.0f / g_framePerSec), nullptr);
 	//lastTimePoint = GetTickCount();
 
-	UINT uMainDlgWidth = 900, uMainDlgHeight = 500;
-	MoveWindow(hWnd, X_MAIN_DLG, Y_MAIN_DLG, uMainDlgWidth, uMainDlgHeight, FALSE);
+	g_mainDlgWidth = X_FONT_INFO + 10 + g_szMax.cx + 10 + 400;
+	g_mainDlgHeight = max(500, 10 + g_szMax.cy * 16);
+	/*
+	初始化方块
+	*/
+	srand((unsigned int)time(nullptr));	// 生成随机数种子
+	GenerateShapes(g_num, shape, 0, 0, X_FONT_INFO, g_mainDlgHeight);
+
+	MoveWindow(hWnd, X_MAIN_DLG, Y_MAIN_DLG, g_mainDlgWidth, g_mainDlgHeight, TRUE);
 
 	ShowWindow(hWnd, SW_SHOW);
+
+	return TRUE;
 }
 
-static void OnClose(HWND hWnd, WPARAM wParam, LPARAM lParam) 
+static INT_PTR OnClose(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	EndDialog(hWnd, 0);
 	OnExit(hWnd);
+	return TRUE;
 }
 
-static void OnQueryEndSession(HWND hWnd, WPARAM wParam, LPARAM lParam) 
+static INT_PTR OnQueryEndSession(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	SetDlgMsgResult(hWnd, WM_QUERYENDSESSION, TRUE);
+	return TRUE;
 }
 
-static void OnEndSession(HWND hWnd, WPARAM wParam, LPARAM lParam) 
+static INT_PTR OnEndSession(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	OnExit(hWnd);
+	return TRUE;
 }
 
-static void OnCommand(HWND hWnd, WPARAM wParam, LPARAM lParam) 
+static INT_PTR OnCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	// Message Source		wParam(high word)					wParam(low word)				lParam
 	// Menu					0									Menu identifier(IDM_*)			0
@@ -288,7 +334,7 @@ static void OnCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	{
 		if (HIWORD(wParam) == CBN_SELCHANGE)
 		{
-			TCHAR szBuffer[64];
+			/*TCHAR szBuffer[64];
 			HWND hwndDlgShape = (HWND)lParam;
 			ComboBox_GetText(hwndDlgShape, szBuffer, sizeof(szBuffer));
 			Shape shape = FindShape(szBuffer);
@@ -297,25 +343,231 @@ static void OnCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 				DYRECT& dyRect = sDyRects[i];
 				dyRect.shape = shape;
 			}
-			InvalidateRect(hWnd, nullptr, TRUE);
+			InvalidateRect(hWnd, nullptr, TRUE);*/
 		}
 	}
 	else if (LOWORD(wParam) == IDC_CBBOX_FONT_TYPE)
 	{
 		if (HIWORD(wParam) == CBN_SELCHANGE)
 		{
+			//TCHAR szBuffer[64];
+			//HWND hwndDlgFontType = (HWND)lParam;
+			//ComboBox_GetText(hwndDlgFontType, szBuffer, sizeof(szBuffer));
+			//g_curLogFont = FindLogFont(szBuffer);
+			////SendMessage(GetDlgItem(hWnd, DLG_MAIN), WM_SETFONT, (WPARAM)CreateFontIndirect(lf), TRUE);
+			////UpdateWindow(hWnd);
+			//HDC hdc = GetDC(hWnd);
+			//DeleteObject(SelectObject(hdc, CreateFontIndirect(g_curLogFont)));
+			//g_szMax = CalculateFontInfo(hdc, g_curLogFont);
+			//ReleaseDC(hWnd, hdc);
+			//ResizeWindow(hWnd);
+		}
+	}
+	else if (LOWORD(wParam) == IDC_EDT_FRAME_RATE)
+	{
+		/*if (HIWORD(wParam) == EN_CHANGE)
+		{
+			g_framePerSec = GetDlgItemInt(hWnd, LOWORD(wParam), nullptr, FALSE);
+			SetTimer(hWnd, 1, (UINT)(1000.0f / g_framePerSec), nullptr);
+		}*/
+	}
+	else if (LOWORD(wParam) == IDC_BTN_OK)
+	{
+		if (HIWORD(wParam) == BN_CLICKED)
+		{
 			TCHAR szBuffer[64];
-			HWND hwndDlgFontType = (HWND)lParam;
-			ComboBox_GetText(hwndDlgFontType, szBuffer, sizeof(szBuffer));
+			g_framePerSec = GetDlgItemInt(hWnd, IDC_EDT_FRAME_RATE, nullptr, FALSE);
+			GetDlgItemText(hWnd, IDC_EDT_GRAVITY, szBuffer, sizeof(szBuffer));
+			g_v_g = _tcstof(szBuffer, nullptr);
+			GetDlgItemText(hWnd, IDC_EDT_RESISTANCE, szBuffer, sizeof(szBuffer));
+			g_v_f = _tcstof(szBuffer, nullptr);
+			int newNum = GetDlgItemInt(hWnd, IDC_EDT_NUM, nullptr, FALSE);
+
+			ComboBox_GetText(GetDlgItem(hWnd, IDC_CBBOX_SHAPE), szBuffer, sizeof(szBuffer));
+			Shape shape = FindShape(szBuffer);
+			for (int i = 0; i < g_num; ++i)
+			{
+				DYRECT& dyRect = sDyRects[i];
+				dyRect.shape = shape;
+			}
+
+			ComboBox_GetText(GetDlgItem(hWnd, IDC_CBBOX_FONT_TYPE), szBuffer, sizeof(szBuffer));
 			g_curLogFont = FindLogFont(szBuffer);
 			//SendMessage(GetDlgItem(hWnd, DLG_MAIN), WM_SETFONT, (WPARAM)CreateFontIndirect(lf), TRUE);
 			//UpdateWindow(hWnd);
+			HDC hdc = GetDC(hWnd);
+			DeleteObject(SelectObject(hdc, CreateFontIndirect(g_curLogFont)));
+			g_szMax = CalculateFontInfo(hdc, g_curLogFont);
+			ReleaseDC(hWnd, hdc);
+
+			/*ResizeWindow(hWnd);*/
+			//图形 + 字体栏 + 菜单
+			g_mainDlgWidth = X_FONT_INFO + 10 + g_szMax.cx + 10 + 400;
+			g_mainDlgHeight = max(500, 10 + g_szMax.cy * 16);
+
+			if (newNum != g_num)
+			{
+				g_num = newNum;
+				GenerateShapes(g_num, shape, 0, 0, X_FONT_INFO, g_mainDlgHeight);
+			}
+
+			RECT rc;
+			GetWindowRect(hWnd, &rc);
+			MoveWindow(hWnd, rc.left, rc.top, g_mainDlgWidth, g_mainDlgHeight, TRUE);
 			InvalidateRect(hWnd, nullptr, TRUE);
 		}
 	}
+	return TRUE;
 }
 
-static void OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam) 
+SIZE CalculateFontInfo(HDC hdc, LOGFONT *lf)
+{
+	TCHAR szBuffer[256];
+	SIZE szMax, szTmp;
+	g_szMax = { 0,0 };
+	auto sz_max = [](SIZE &s1, SIZE &s2)->SIZE {
+		SIZE tmp;
+		tmp.cx = s1.cx > s2.cx ? s1.cx : s2.cx;
+		tmp.cy = s1.cy > s2.cy ? s1.cy : s2.cy;
+		return tmp;
+	};
+
+	_stprintf_s(szBuffer, g_szFontInfo[0], lf->lfFaceName);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = szTmp;
+
+	_stprintf_s(szBuffer, g_szFontInfo[1], lf->lfHeight);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[2], lf->lfWidth);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[3], lf->lfEscapement);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[4], lf->lfOrientation);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[5], lf->lfWeight);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[6], lf->lfItalic);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[7], lf->lfUnderline);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[8], lf->lfStrikeOut);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[9], lf->lfCharSet);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[10], lf->lfOutPrecision);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[11], lf->lfClipPrecision);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[12], lf->lfQuality);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[13], lf->lfPitchAndFamily);
+	GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);
+	
+	g_szMax = szMax;
+	g_szMax.cy = max(g_curLogFont->lfHeight, g_szMax.cy);
+	return g_szMax;
+}
+
+void TextOutFontInfo(HDC hdc, LOGFONT *lf)
+{
+	DWORD fontH = g_szMax.cy;
+	TCHAR szBuffer[256];
+
+	_stprintf_s(szBuffer, g_szFontInfo[0], lf->lfFaceName);
+	TextOut(hdc, X_FONT_INFO + 10, 10, szBuffer, _tcslen(szBuffer));
+	/*GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);*/
+	
+	_stprintf_s(szBuffer, g_szFontInfo[1], lf->lfHeight);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 1 * fontH, szBuffer, _tcslen(szBuffer));
+	/*GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);*/
+	
+	_stprintf_s(szBuffer, g_szFontInfo[2], lf->lfWidth);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 2 * fontH, szBuffer, _tcslen(szBuffer));
+	/*GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);*/
+
+	_stprintf_s(szBuffer, g_szFontInfo[3], lf->lfEscapement);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 3 * fontH, szBuffer, _tcslen(szBuffer));
+	/*GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);*/
+
+	_stprintf_s(szBuffer, g_szFontInfo[4], lf->lfOrientation);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 4 * fontH, szBuffer, _tcslen(szBuffer));
+	/*GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);*/
+
+	_stprintf_s(szBuffer, g_szFontInfo[5], lf->lfWeight);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 5 * fontH, szBuffer, _tcslen(szBuffer));
+	/*GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);*/
+
+	_stprintf_s(szBuffer, g_szFontInfo[6], lf->lfItalic);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 6 * fontH, szBuffer, _tcslen(szBuffer));
+	/*GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);*/
+
+	_stprintf_s(szBuffer, g_szFontInfo[7], lf->lfUnderline);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 7 * fontH, szBuffer, _tcslen(szBuffer));
+	/*GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);*/
+
+	_stprintf_s(szBuffer, g_szFontInfo[8], lf->lfStrikeOut);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 8 * fontH, szBuffer, _tcslen(szBuffer));
+	/*szMax = sz_max(szMax, szTmp);*/
+
+	_stprintf_s(szBuffer, g_szFontInfo[9], lf->lfCharSet);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 9 * fontH, szBuffer, _tcslen(szBuffer));
+	/*GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);*/
+
+	_stprintf_s(szBuffer, g_szFontInfo[10],	lf->lfOutPrecision);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 10 * fontH, szBuffer, _tcslen(szBuffer));
+	/*GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	szMax = sz_max(szMax, szTmp);*/
+
+	_stprintf_s(szBuffer, g_szFontInfo[11], lf->lfClipPrecision);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 11 * fontH, szBuffer, _tcslen(szBuffer));
+	//GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	//szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[12], lf->lfQuality);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 12 * fontH, szBuffer, _tcslen(szBuffer));
+	//GetTextExtentPoint32(hdc, szBuffer, _tcslen(szBuffer), &szTmp);
+	//szMax = sz_max(szMax, szTmp);
+
+	_stprintf_s(szBuffer, g_szFontInfo[13], lf->lfPitchAndFamily);
+	TextOut(hdc, X_FONT_INFO + 10, 10 + 13 * fontH, szBuffer, _tcslen(szBuffer));
+
+	//return szMax;
+}
+
+static INT_PTR OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	PAINTSTRUCT ps;
 	RECT rcClient;
@@ -325,9 +577,16 @@ static void OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	Rectangle(ps.hdc, rcClient.left - 1, rcClient.top - 1, rcClient.right + 1, rcClient.bottom + 1);
 	DeleteObject(SelectObject(ps.hdc, GetStockObject(DC_BRUSH)));
 	DeleteObject(SelectObject(ps.hdc, CreateFontIndirect(g_curLogFont)));
-	TCHAR szBuffer[64];
+	SetBkColor(ps.hdc, RGB(0xff, 0xff, 0xff));
+	SetBkMode(ps.hdc, OPAQUE);
+	/*DWORD begX = 0, begY = 0, fontH = g_curLogFont->lfHeight;
 	_stprintf_s(szBuffer, TEXT("这是中文，用于字体测试"));
 	TextOut(ps.hdc, 10, 10, szBuffer, _tcslen(szBuffer));
+
+	_stprintf_s(szBuffer, TEXT("Hello world, what the fuck!"));
+	TextOut(ps.hdc, 10, 30, szBuffer, _tcslen(szBuffer));*/
+	
+
 // 	SetMapMode(hdc, MM_ISOTROPIC);
 // 	SetWindowExtEx(hdc, cxClient, cyClient, nullptr);
 // 	SetWindowOrgEx(hdc, 0, 0, nullptr);
@@ -349,95 +608,69 @@ static void OnPaint(HWND hWnd, WPARAM wParam, LPARAM lParam)
 			break;
 		}
 	}
+	HPEN penVertical = CreatePen(PS_SOLID, 2, RGB(0xC4, 0xC4, 0xC4));
+	HGDIOBJ oldPen = SelectObject(ps.hdc, penVertical);
+	DeleteObject(SelectObject(ps.hdc, oldPen));
+	g_szMax = CalculateFontInfo(ps.hdc, g_curLogFont);
+	TextOutFontInfo(ps.hdc, g_curLogFont);
+	MoveToEx(ps.hdc, X_FONT_INFO, 0, nullptr);
+	LineTo(ps.hdc, X_FONT_INFO, g_mainDlgHeight);
+	MoveToEx(ps.hdc, X_FONT_INFO + 10 + g_szMax.cx + 10, 0, nullptr);
+	LineTo(ps.hdc, X_FONT_INFO + 10 + g_szMax.cx + 10, g_mainDlgHeight);
 	EndPaint(hWnd, &ps);
+	return TRUE;
 }
 
-static void OnSize(HWND hWnd, WPARAM wParam, LPARAM lParam) 
-{
-	//获取客户区大小
-	LONG cxClient = 0, cyClient = 0;
-	cxClient = (LOWORD(lParam));
-	cyClient = (HIWORD(lParam));
-
-	//设置画布位置
-	GetClientRect(hWnd, &rcCanvas);
-	rcCanvas.right = (cxClient / WIDTH_RATIO) * (WIDTH_RATIO - 2);
-
+static INT_PTR OnSize(HWND hWnd, WPARAM wParam, LPARAM lParam)
+{	
 	//菜单窗口的位置为相对于最顶层窗口的位置
 	//MoveWindow(hwndMenu, rcCanvas.right, 0, cxClient - rcCanvas.right, cyClient, TRUE);
 	//GetClientRect(hwndMenu, &rcMenu);
-	rcOption.left = rcCanvas.right + 30;
-	rcOption.top = 0;
-	rcOption.right = cxClient;
-	rcOption.bottom = cyClient;
+
+	DWORD xBeg = X_FONT_INFO + 10 + g_szMax.cx + 10 + 30;
 	
-	//设置控件位置,控件的位置为相对于父窗口的位置
-	RECT rcTmp[17];
-	GetWindowRect(GetDlgItem(hWnd, IDC_LB_FRAME_RATE), &rcTmp[0]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_LB_FRAME_RATE2), &rcTmp[13]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_LB_GRAVITY), &rcTmp[1]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_LB_GRAVITY2), &rcTmp[14]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_LB_RESISTANCE), &rcTmp[2]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_LB_NUM), &rcTmp[3]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_LB_NUM2), &rcTmp[15]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_LB_SHAPE), &rcTmp[4]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_LB_FONT_TYPE), &rcTmp[5]);
+	MoveWindow(GetDlgItem(hWnd, IDC_LB_FRAME_RATE), xBeg,			32,	27, 18, TRUE);
+	MoveWindow(GetDlgItem(hWnd, IDC_EDT_FRAME_RATE), xBeg + 74,	32, 50, 24, TRUE);
+	MoveWindow(GetDlgItem(hWnd, IDC_LB_FRAME_RATE2), xBeg + 128,	32, 42, 18, TRUE);
+	
+	MoveWindow(GetDlgItem(hWnd, IDC_LB_GRAVITY),	xBeg,			54 + 10, 61, 18, TRUE);
+	MoveWindow(GetDlgItem(hWnd, IDC_EDT_GRAVITY),	xBeg + 74,		51 + 10, 50, 24, TRUE);
+	MoveWindow(GetDlgItem(hWnd, IDC_LB_GRAVITY2),	xBeg + 128,	51 + 10, 22, 18, TRUE);
+	
+	MoveWindow(GetDlgItem(hWnd, IDC_LB_RESISTANCE), xBeg,			74 + 20, 27, 18, TRUE);
+	MoveWindow(GetDlgItem(hWnd, IDC_EDT_RESISTANCE), xBeg + 74,	71 + 20, 50, 24, TRUE);
+	
+	MoveWindow(GetDlgItem(hWnd, IDC_LB_NUM),		xBeg,			93 + 30, 27, 18, TRUE);
+	MoveWindow(GetDlgItem(hWnd, IDC_EDT_NUM),		xBeg + 74,		90 + 30, 50, 24, TRUE);
+	MoveWindow(GetDlgItem(hWnd, IDC_LB_NUM2),		xBeg + 128,	92 + 30, 19, 18, TRUE);
+	
+	MoveWindow(GetDlgItem(hWnd, IDC_LB_SHAPE),		xBeg,			111 + 40, 27, 18, TRUE);
+	MoveWindow(GetDlgItem(hWnd, IDC_CBBOX_SHAPE),	xBeg + 74,		108 + 40, 150, 200, TRUE);
+	
+	MoveWindow(GetDlgItem(hWnd, IDC_LB_FONT_TYPE),	xBeg,			133 + 50, 27, 18, TRUE);
+	MoveWindow(GetDlgItem(hWnd, IDC_CBBOX_FONT_TYPE), xBeg + 74,	131 + 50, 150, 200, TRUE);
 
-	GetWindowRect(GetDlgItem(hWnd, IDC_EDT_FRAME_RATE), &rcTmp[6]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_EDT_GRAVITY), &rcTmp[7]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_EDT_RESISTANCE), &rcTmp[8]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_EDT_NUM), &rcTmp[9]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_CBBOX_SHAPE), &rcTmp[10]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_CBBOX_FONT_TYPE), &rcTmp[11]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_BTN_PAUSE), &rcTmp[16]);
-	GetWindowRect(GetDlgItem(hWnd, IDC_BTN_OK), &rcTmp[12]);
+	MoveWindow(GetDlgItem(hWnd, IDC_BTN_PAUSE),		xBeg + 10,		154 + 60, 60, 24, TRUE);
+	MoveWindow(GetDlgItem(hWnd, IDC_BTN_OK),		xBeg + 100,	154 + 60, 60, 24, TRUE);
 
-	MoveWindow(GetDlgItem(hWnd, IDC_LB_FRAME_RATE), rcOption.left, rcTmp[0].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[0]), RC_HEIGHT(rcTmp[0]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_LB_FRAME_RATE2), rcOption.left + (rcTmp[13].left - rcTmp[0].left), rcTmp[13].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[13]), RC_HEIGHT(rcTmp[13]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_LB_GRAVITY), rcOption.left, rcTmp[1].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[1]), RC_HEIGHT(rcTmp[1]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_LB_GRAVITY2), rcOption.left + (rcTmp[14].left - rcTmp[1].left), rcTmp[14].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[14]), RC_HEIGHT(rcTmp[14]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_LB_RESISTANCE), rcOption.left, rcTmp[2].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[2]), RC_HEIGHT(rcTmp[2]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_LB_NUM), rcOption.left, rcTmp[3].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[3]), RC_HEIGHT(rcTmp[3]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_LB_NUM2), rcOption.left + (rcTmp[15].left - rcTmp[3].left), rcTmp[15].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[15]), RC_HEIGHT(rcTmp[15]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_LB_SHAPE), rcOption.left, rcTmp[4].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[4]), RC_HEIGHT(rcTmp[4]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_LB_FONT_TYPE), rcOption.left, rcTmp[5].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[5]), RC_HEIGHT(rcTmp[5]), TRUE);
-
-	MoveWindow(GetDlgItem(hWnd, IDC_EDT_FRAME_RATE), rcOption.left + (rcTmp[6].left - rcTmp[0].left), rcTmp[6].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[6]), RC_HEIGHT(rcTmp[6]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_EDT_GRAVITY), rcOption.left + (rcTmp[7].left - rcTmp[1].left), rcTmp[7].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[7]), RC_HEIGHT(rcTmp[7]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_EDT_RESISTANCE), rcOption.left + (rcTmp[8].left - rcTmp[2].left), rcTmp[8].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[8]), RC_HEIGHT(rcTmp[8]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_EDT_NUM), rcOption.left + (rcTmp[9].left - rcTmp[3].left), rcTmp[9].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[9]), RC_HEIGHT(rcTmp[9]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_CBBOX_SHAPE), rcOption.left + (rcTmp[10].left - rcTmp[4].left), rcTmp[10].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[10]), RC_HEIGHT(rcTmp[10]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_CBBOX_FONT_TYPE), rcOption.left + (rcTmp[11].left - rcTmp[5].left), rcTmp[11].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[11]), RC_HEIGHT(rcTmp[11]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_BTN_PAUSE), rcOption.left, rcTmp[16].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[16]), RC_HEIGHT(rcTmp[16]), TRUE);
-	MoveWindow(GetDlgItem(hWnd, IDC_BTN_OK), rcOption.left + (rcTmp[12].left - rcTmp[16].left), rcTmp[12].top - Y_MAIN_DLG, RC_WIDTH(rcTmp[12]), RC_HEIGHT(rcTmp[12]), TRUE);
 	
 
-	//随机生成形状
-	for (int i = 0; i < g_num; ++i)
-	{
-		DYRECT& dyRect = sDyRects[i];
-		//  随机生成
-		dyRect.rc.left = rand() % (rcCanvas.right - dyRect.w);
-		dyRect.rc.top = rand() % (rcCanvas.bottom - dyRect.h);
-		dyRect.rc.right = dyRect.rc.left + dyRect.w;
-		dyRect.rc.bottom = dyRect.rc.top + dyRect.h;
-		dyRect.rgb = rand() % DWORD(-1);
-	}
+	return TRUE;
 }
 
-static void OnGetMinMaxInfo(HWND hWnd, WPARAM wParam, LPARAM lParam) {}
+static INT_PTR OnGetMinMaxInfo(HWND hWnd, WPARAM wParam, LPARAM lParam) { return TRUE; }
 
-static void OnNotify(HWND hWnd, WPARAM wParam, LPARAM lParam) 
+static INT_PTR OnNotify(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
-	return;
+	return TRUE;
 }
 
-static void OnTimer(HWND hWnd, WPARAM wParam, LPARAM lParam)
+static INT_PTR OnTimer(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
 	if (g_pause)
 	{
 		g_bFirst = TRUE;
-		return;
+		return TRUE;
 	}
 
 	DWORD currentTimePoint = GetTickCount();
@@ -490,10 +723,10 @@ static void OnTimer(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		rcNew.bottom = rcNew.top + (LONG)dyRect.h;
 
 		// 是否到达上下下边界
-		if (rcNew.bottom >= rcCanvas.bottom)
+		if (rcNew.bottom >= g_mainDlgHeight)
 		{
 			dyRect.v_sign = !dyRect.v_sign;
-			rcNew.bottom = 2 * rcCanvas.bottom - rcNew.bottom;
+			rcNew.bottom = 2 * g_mainDlgHeight - rcNew.bottom;
 			rcNew.top = rcNew.bottom - dyRect.h;
 		}
 		else if (dyRect.v_v0 < 0.0f)
@@ -503,7 +736,7 @@ static void OnTimer(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		}
 
 		// 是否到达左右边界
-		if (rcNew.left < 0.0f || rcNew.right >= rcCanvas.right)
+		if (rcNew.left < 10 || rcNew.right >= X_FONT_INFO - 10)
 		{
 			dyRect.h_sign = !dyRect.h_sign;
 		}
@@ -519,9 +752,11 @@ static void OnTimer(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		InvalidateRgn(hWnd, dyRect.hRgnOld, TRUE);
 		InvalidateRgn(hWnd, dyRect.hRgnNew, TRUE);
 	}
+
+	return TRUE;
 }
 
-static void Exit(HWND hWnd, bool restart)
+static INT_PTR Exit(HWND hWnd, bool restart)
 {
 	// Exit
 	DestroyWindow(hWnd);
@@ -536,13 +771,21 @@ static void Exit(HWND hWnd, bool restart)
 		delete var;
 	}
 	g_vecLogFont.clear();
+	return TRUE;
 }
 
-static void OnExit(HWND hWnd)
+static INT_PTR OnExit(HWND hWnd)
 {
 	Exit(hWnd, false);
+	return TRUE;
 }
 
+static INT_PTR OnCtlColorStatic(HWND hWnd, WPARAM wParam, LPARAM lParam)
+{
+	//HDC hdcStatic = (HDC)wParam;
+	//SetBkColor(hdcStatic, RGB(0xff, 0xff, 0xff));
+	return (INT_PTR)GetStockObject(WHITE_BRUSH);
+}
 
 //static void OnSetFont(HWND hWnd, WPARAM wParam, LPARAM lParam)
 //{
@@ -555,7 +798,7 @@ static void OnExit(HWND hWnd)
 ///----------------------------------------------------------------------------------------------//
 INT_PTR CALLBACK ProcDlgMain(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-#define PROCESS_MSG(MSG, HANDLER) if(uMsg == MSG) { HANDLER(hWnd, wParam, lParam); return TRUE; }
+#define PROCESS_MSG(MSG, HANDLER) if(uMsg == MSG) { return HANDLER(hWnd, wParam, lParam); }
 
 	PROCESS_MSG(WM_MOUSEMOVE, OnMouseMove);
 	PROCESS_MSG(WM_LBUTTONDOWN, OnLButtonDown);
@@ -572,6 +815,7 @@ INT_PTR CALLBACK ProcDlgMain(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 	PROCESS_MSG(WM_GETMINMAXINFO, OnGetMinMaxInfo);  // Set Window's minimun size
 	PROCESS_MSG(WM_NOTIFY, OnNotify);
 	PROCESS_MSG(WM_TIMER, OnTimer);
+	PROCESS_MSG(WM_CTLCOLORSTATIC, OnCtlColorStatic);
 		//PROCESS_MSG(WM_CLEAR_DB_AND_RESTART, OnClearAndRestart)
 		//PROCESS_MSG(WM_RESTART, OnRestart)
 		//PROCESS_MSG(WM_CTLCOLORDLG, OnCtlColorDlg)

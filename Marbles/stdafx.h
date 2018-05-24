@@ -47,3 +47,4 @@
 #define RC_HEIGHT(rc)	(rc.bottom - rc.top)
 #define X_MAIN_DLG		100
 #define Y_MAIN_DLG		100
+#define X_FONT_INFO		600
