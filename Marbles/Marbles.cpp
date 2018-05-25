@@ -120,7 +120,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 //     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_MARBLES));
-
+	
     MSG msg;
 	CreateDialogParam(hInstance, MAKEINTRESOURCE(DLG_MAIN), NULL, ProcDlgMain, 0);
 	
